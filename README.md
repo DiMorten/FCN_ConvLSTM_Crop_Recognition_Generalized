@@ -1,1 +1,1 @@
-FCN_ConvLSTM_Crop_Recognition_Generalized
+github_fullyconvrecurrent_optical_ims
