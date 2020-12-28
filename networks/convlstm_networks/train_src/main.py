@@ -47,6 +47,9 @@ import tensorflow as tf
 
 from patches_storage import PatchesStorageEachSample,PatchesStorageAllSamples
 from datagenerator import DataGenerator
+
+
+sys.path.append('../')
 parser = argparse.ArgumentParser(description='')
 parser.add_argument('-tl', '--t_len', dest='t_len',
 					type=int, default=7, help='t len')
@@ -87,6 +90,9 @@ parser.add_argument('-mdl', '--model_type', dest='model_type',
 					default='DenseNet', help='Experiment id')
 parser.add_argument('-ste', '--stop_epoch', dest='stop_epoch',
 					type=int, default=-1, help='Stop epoch. If 0, no fixed stop epoch.')
+parser.add_argument('-seq_mode', '--seq_mode', dest='seq_mode',
+					type=str, default='fixed', help='Sequence len type. variable or fixed')
+
 
 
 
@@ -252,8 +258,8 @@ class Dataset(NetObject):
 		self.patches['train']['label']=self.batch_label_to_one_hot(self.patches['train']['label'])
 		self.patches['test']['label']=self.batch_label_to_one_hot(self.patches['test']['label'])
 
-		self.patches['train']['in']=self.patches['train']['in'].astype(np.float32)
-		self.patches['test']['in']=self.patches['test']['in'].astype(np.float32)
+		self.patches['train']['in']=self.patches['train']['in'].astype(np.float16)
+		self.patches['test']['in']=self.patches['test']['in'].astype(np.float16)
 
 		self.patches['train']['label']=self.patches['train']['label'].astype(np.int8)
 		self.patches['test']['label']=self.patches['test']['label'].astype(np.int8)
@@ -280,6 +286,14 @@ class Dataset(NetObject):
 		self.patches['train']['n']=self.patches['train']['in'].shape[0]
 		self.patches['train']['idx']=range(self.patches['train']['n'])
 		np.save('labels_beginning.npy',self.patches['test']['label'])
+
+		deb.prints(args.seq_mode)
+		if args.seq_mode == 'fixed':
+			args.seq_label = -1
+			self.patches['train']['label'] = self.patches['train']['label'][:,args.seq_label]
+			self.patches['test']['label'] = self.patches['test']['label'][:,args.seq_label]
+		deb.prints(self.patches['train']['label'].shape)
+		#pdb.set_trace()
 
 	def batch_label_to_one_hot(self,im):
 		im_one_hot=np.zeros((im.shape[0],im.shape[1],im.shape[2],im.shape[3],self.class_n))
@@ -594,7 +608,7 @@ class Dataset(NetObject):
 		out=cv2.cvtColor(out.astype(np.uint8),cv2.COLOR_RGB2BGR)
 		return out
 	def val_set_get(self,mode='stratified',validation_split=0.2):
-		clss_train_unique,clss_train_count=np.unique(self.patches['train']['label'].argmax(axis=4),return_counts=True)
+		clss_train_unique,clss_train_count=np.unique(self.patches['train']['label'].argmax(axis=-1),return_counts=True)
 		deb.prints(clss_train_count)
 		self.patches['val']={'n':int(self.patches['train']['n']*validation_split)}
 		
@@ -618,7 +632,7 @@ class Dataset(NetObject):
 				self.patches['val']['in']=self.patches['train']['in'][self.patches['val']['idx']]
 				self.patches['val']['label']=self.patches['train']['label'][self.patches['val']['idx']]
 		
-				clss_val_unique,clss_val_count=np.unique(self.patches['val']['label'].argmax(axis=4),return_counts=True)
+				clss_val_unique,clss_val_count=np.unique(self.patches['val']['label'].argmax(axis=-1),return_counts=True)
 
 				# If validation set doesn't contain ALL classes from train set, repeat random choice
 				if not np.array_equal(clss_train_unique,clss_val_unique):
@@ -678,7 +692,7 @@ class Dataset(NetObject):
 		patch_count=np.zeros(self.class_n)
 
 		for clss in range(self.class_n):
-			patch_count[clss]=np.count_nonzero(np.isin(self.patches['test']['label'].argmax(axis=4),clss).sum(axis=(1,2,3)))
+			patch_count[clss]=np.count_nonzero(np.isin(self.patches['test']['label'].argmax(axis=-1),clss).sum(axis=(1,2)))
 		deb.prints(patch_count.shape)
 		print("Test",patch_count)
 		
@@ -686,7 +700,7 @@ class Dataset(NetObject):
 		patch_count=np.zeros(self.class_n)
 
 		for clss in range(self.class_n):
-			patch_count[clss]=np.count_nonzero(np.isin(self.patches['train']['label'].argmax(axis=4),clss).sum(axis=(1,2,3)))
+			patch_count[clss]=np.count_nonzero(np.isin(self.patches['train']['label'].argmax(axis=-1),clss).sum(axis=(1,2)))
 		deb.prints(patch_count.shape)
 		print("Train",patch_count)
 		
@@ -697,7 +711,7 @@ class Dataset(NetObject):
 
 		balance["out_labels"]=np.zeros((balance["out_n"],) + self.patches["train"]["label"].shape[1::])
 
-		label_int=self.patches['train']['label'].argmax(axis=4)
+		label_int=self.patches['train']['label'].argmax(axis=-1)
 		labels_flat=np.reshape(label_int,(label_int.shape[0],np.prod(label_int.shape[1:])))
 		k=0
 		for clss in range(1,self.class_n):
@@ -714,7 +728,7 @@ class Dataset(NetObject):
 			balance["label"]=self.patches['train']['label'][idxs]
 
 
-			print(clss)
+			deb.prints(clss)
 			if balance["label"].shape[0]>samples_per_class:
 				replace=False
 				index_squeezed=range(balance["label"].shape[0])
@@ -736,23 +750,23 @@ class Dataset(NetObject):
 						
 						if cont_transf == 0:
 							augmented_data_temp = np.rot90(augmented_data_temp,1,(2,3))
-							augmented_label_temp = np.rot90(augmented_label_temp,1,(2,3))
+							augmented_label_temp = np.rot90(augmented_label_temp,1,(1,2))
 						
 						elif cont_transf == 1:
 							augmented_data_temp = np.rot90(augmented_data_temp,2,(2,3))
-							augmented_label_temp = np.rot90(augmented_label_temp,2,(2,3))
+							augmented_label_temp = np.rot90(augmented_label_temp,2,(1,2))
 
 						elif cont_transf == 2:
 							augmented_data_temp = np.flip(augmented_data_temp,2)
-							augmented_label_temp = np.flip(augmented_label_temp,2)
+							augmented_label_temp = np.flip(augmented_label_temp,1)
 							
 						elif cont_transf == 3:
 							augmented_data_temp = np.flip(augmented_data_temp,3)
-							augmented_label_temp = np.flip(augmented_label_temp,3)
+							augmented_label_temp = np.flip(augmented_label_temp,2)
 						
 						elif cont_transf == 4:
 							augmented_data_temp = np.rot90(augmented_data_temp,3,(2,3))
-							augmented_label_temp = np.rot90(augmented_label_temp,3,(2,3))
+							augmented_label_temp = np.rot90(augmented_label_temp,3,(1,2))
 							
 						elif cont_transf == 5:
 							augmented_data_temp = augmented_data_temp
@@ -955,6 +969,14 @@ class NetModel(NetObject):
 							   beta_regularizer=l2(weight_decay))(x)
 			x = Activation('relu')(x)
 			return x
+		def dilated_layer_Nto1(x,filter_size,dilation_rate=1, kernel_size=3):
+			x = Conv2D(filter_size, kernel_size, padding='same',
+				dilation_rate=(dilation_rate, dilation_rate))(x)
+			x = BatchNormalization(gamma_regularizer=l2(weight_decay),
+							   beta_regularizer=l2(weight_decay))(x)
+			x = Activation('relu')(x)
+			return x
+
 		def dilated_layer_3D(x,filter_size,dilation_rate=1, kernel_size=3):
 			if isinstance(dilation_rate, int):
 				dilation_rate = (dilation_rate, dilation_rate, dilation_rate)
@@ -966,8 +988,8 @@ class NetModel(NetObject):
 			return x
 		def transpose_layer(x,filter_size,dilation_rate=1,
 			kernel_size=3, strides=(2,2)):
-			x = TimeDistributed(Conv2DTranspose(filter_size, 
-				kernel_size, strides=strides, padding='same'))(x)
+			x = Conv2DTranspose(filter_size, 
+				kernel_size, strides=strides, padding='same')(x)
 			x = BatchNormalization(gamma_regularizer=l2(weight_decay),
 												beta_regularizer=l2(weight_decay))(x)
 			x = Activation('relu')(x)
@@ -1024,7 +1046,7 @@ class NetModel(NetObject):
 				x.append(dilated_layer(in_im,filter_size,8)) #18 (4,8,8)
 			if global_average_pooling==True:
 				x.append(im_pooling_layer(in_im,filter_size))
-			out = keras.layers.concatenate(x, axis=4)
+			out = keras.layers.concatenate(x, axis=-1)
 			return out
 
 		def spatial_pyramid_pooling_3D(in_im,filter_size,
@@ -1040,7 +1062,7 @@ class NetModel(NetObject):
 				x.append(dilated_layer_3D(in_im,filter_size,(4,8,8))) #18
 			if global_average_pooling==True:
 				x.append(im_pooling_layer(in_im,filter_size))
-			out = keras.layers.concatenate(x, axis=4)
+			out = keras.layers.concatenate(x, axis=-1)
 			return out
 
 		def temporal_pyramid_pooling(in_im,filter_size,
@@ -1575,6 +1597,9 @@ class NetModel(NetObject):
 		if self.model_type=='BUnet4ConvLSTM':
 
 
+
+			concat_axis = 3
+
 			#fs=32
 			fs=16
 
@@ -1586,22 +1611,80 @@ class NetModel(NetObject):
 			p3=dilated_layer(e2,fs*4)
 			e3 = TimeDistributed(AveragePooling2D((2, 2), strides=(2, 2)))(p3)
 
-			x = Bidirectional(ConvLSTM2D(128,3,return_sequences=True,
+			x = Bidirectional(ConvLSTM2D(128,3,return_sequences=False,
 					padding="same"),merge_mode='concat')(e3)
 
 			d3 = transpose_layer(x,fs*4)
-			d3 = keras.layers.concatenate([d3, p3], axis=4)
-			d3=dilated_layer(d3,fs*4)
+			d3 = keras.layers.concatenate([d3, p3], axis=concat_axis)
+			d3=dilated_layer_Nto1(d3,fs*4)
 			d2 = transpose_layer(d3,fs*2)
-			d2 = keras.layers.concatenate([d2, p2], axis=4)
-			d2=dilated_layer(d2,fs*2)
+			d2 = keras.layers.concatenate([d2, p2], axis=concat_axis)
+			d2=dilated_layer_Nto1(d2,fs*2)
 			d1 = transpose_layer(d2,fs)
-			d1 = keras.layers.concatenate([d1, p1], axis=4)
-			out=dilated_layer(d1,fs)
-			out = TimeDistributed(Conv2D(self.class_n, (1, 1), activation=None,
-										padding='same'))(out)
+			d1 = keras.layers.concatenate([d1, p1], axis=concat_axis)
+			out=dilated_layer_Nto1(d1,fs)
+			out = Conv2D(self.class_n, (1, 1), activation=None,
+										padding='same')(out)
 			self.graph = Model(in_im, out)
 			print(self.graph.summary())
+		if self.model_type=='UUnet4ConvLSTM':
+
+
+			
+			def slice_tensor(x,output_shape):
+				deb.prints(output_shape)
+				deb.prints(K.int_shape(x))
+#				res1 = Lambda(lambda x: x[:,:,:,-1], output_shape=output_shape)(x)
+#				res2 = Lambda(lambda x: x[:,:,:,-1], output_shape=output_shape[1:])(x)
+				res2 = Lambda(lambda x: x[:,-1])(x)
+
+#				deb.prints(K.int_shape(res1))
+				deb.prints(K.int_shape(res2))
+				
+				return res2
+			
+			concat_axis = 3
+
+			#fs=32
+			fs=16
+
+			p1=dilated_layer(in_im,fs)			
+			p1=dilated_layer(p1,fs)
+			e1 = TimeDistributed(AveragePooling2D((2, 2), strides=(2, 2)))(p1)
+			p2=dilated_layer(e1,fs*2)
+			e2 = TimeDistributed(AveragePooling2D((2, 2), strides=(2, 2)))(p2)
+			p3=dilated_layer(e2,fs*4)
+			e3 = TimeDistributed(AveragePooling2D((2, 2), strides=(2, 2)))(p3)
+
+			x = Bidirectional(ConvLSTM2D(128,3,return_sequences=False,
+					padding="same"),merge_mode='concat')(e3)
+
+			d3 = transpose_layer(x,fs*4)
+			p3 = slice_tensor(p3, output_shape = K.int_shape(d3))
+			deb.prints(K.int_shape(p3))
+			deb.prints(K.int_shape(d3))
+			
+			d3 = keras.layers.concatenate([d3, p3], axis=concat_axis)
+			d3=dilated_layer_Nto1(d3,fs*4)
+			d2 = transpose_layer(d3,fs*2)
+			p2 = slice_tensor(p2, output_shape = K.int_shape(d2))
+			deb.prints(K.int_shape(p2))
+			deb.prints(K.int_shape(d2))
+
+			d2 = keras.layers.concatenate([d2, p2], axis=concat_axis)
+			d2=dilated_layer_Nto1(d2,fs*2)
+			d1 = transpose_layer(d2,fs)
+			p1 = slice_tensor(p1, output_shape = K.int_shape(d1))
+			deb.prints(K.int_shape(p1))
+			deb.prints(K.int_shape(d1))
+
+			d1 = keras.layers.concatenate([d1, p1], axis=concat_axis)
+			out=dilated_layer_Nto1(d1,fs)
+			out = Conv2D(self.class_n, (1, 1), activation=None,
+										padding='same')(out)
+			self.graph = Model(in_im, out)
+			print(self.graph.summary())
+
 
 		if self.model_type=='BUnet4ConvLSTM_SkipLSTM':
 			#fs=32
@@ -2273,7 +2356,7 @@ class NetModel(NetObject):
 			self.graph.summary(line_length=125,print_fn=lambda x: fh.write(x+'\n'))
 		#self.graph.summary(print_fn=model_summary_print)
 	def loss_weights_estimate(self,data):
-		unique,count=np.unique(data.patches['train']['label'].argmax(axis=4),return_counts=True)
+		unique,count=np.unique(data.patches['train']['label'].argmax(axis=-1),return_counts=True)
 		unique=unique[1:] # No bcknd
 		count=count[1:].astype(np.float32)
 		weights_from_unique=np.max(count)/count
@@ -2392,17 +2475,17 @@ class NetModel(NetObject):
 
 
 		if self.val_set:
-			count,unique=np.unique(data.patches['val']['label'].argmax(axis=4),return_counts=True)
+			count,unique=np.unique(data.patches['val']['label'].argmax(axis=-1),return_counts=True)
 			print("Val label count,unique",count,unique)
 
-		count,unique=np.unique(data.patches['train']['label'].argmax(axis=4),return_counts=True)
+		count,unique=np.unique(data.patches['train']['label'].argmax(axis=-1),return_counts=True)
 		print("Train count,unique",count,unique)
 		
-		count,unique=np.unique(data.patches['test']['label'].argmax(axis=4),return_counts=True)
+		count,unique=np.unique(data.patches['test']['label'].argmax(axis=-1),return_counts=True)
 		print("Test count,unique",count,unique)
 		
 		#==================== ESTIMATE BATCH NUMBER===============================#
-		prediction_dtype=np.float32
+		prediction_dtype=np.float16
 #		prediction_dtype=np.int16
 #		prediction_dtype=np.int8
 
@@ -2410,8 +2493,8 @@ class NetModel(NetObject):
 		self.batch['train']['n'] = data.patches['train']['in'].shape[0] // self.batch['train']['size']
 		self.batch['test']['n'] = data.patches['test']['in'].shape[0] // self.batch['test']['size']
 		self.batch['val']['n'] = data.patches['val']['in'].shape[0] // self.batch['val']['size']
-
-		data.patches['test']['prediction']=np.zeros_like(data.patches['test']['label'][:,:,:,:,:-1], dtype=prediction_dtype)
+	
+		data.patches['test']['prediction']=np.zeros_like(data.patches['test']['label'][:,:,:,:-1], dtype=prediction_dtype)
 		deb.prints(data.patches['test']['label'].shape)
 		deb.prints(self.batch['test']['n'])
 		
@@ -2443,11 +2526,13 @@ class NetModel(NetObject):
 
 				batch['train']['in'] = data.patches['train']['in'][idx0:idx1]
 				batch['train']['label'] = data.patches['train']['label'][idx0:idx1]
+
+				#pdb.set_trace()
 				if self.time_measure==True:
 					start_time=time.time()
 				self.metrics['train']['loss'] += self.graph.train_on_batch(
-					batch['train']['in'].astype(np.float32), 
-					np.expand_dims(batch['train']['label'].argmax(axis=4),axis=4).astype(np.int8))		# Accumulated epoch
+					batch['train']['in'].astype(np.float16), 
+					np.expand_dims(batch['train']['label'].argmax(axis=3),axis=3).astype(np.int8))		# Accumulated epoch
 				if self.time_measure==True:
 					batch_time=time.time()-start_time
 					print(batch_time)
@@ -2463,7 +2548,7 @@ class NetModel(NetObject):
 			#================== VAL LOOP=====================#
 			if self.val_set:
 				deb.prints(data.patches['val']['label'].shape)
-				data.patches['val']['prediction']=np.zeros_like(data.patches['val']['label'][:,:,:,:,:-1],dtype=prediction_dtype)
+				data.patches['val']['prediction']=np.zeros_like(data.patches['val']['label'][:,:,:,:-1],dtype=prediction_dtype)
 				self.batch_test_stats=False
 
 				for batch_id in range(0, self.batch['val']['n']):
@@ -2475,8 +2560,8 @@ class NetModel(NetObject):
 
 					if self.batch_test_stats:
 						self.metrics['val']['loss'] += self.graph.test_on_batch(
-							batch['val']['in'].astype(np.float32), 
-							np.expand_dims(batch['val']['label'].argmax(axis=4),axis=4).astype(np.int8))		# Accumulated epoch
+							batch['val']['in'].astype(np.float16), 
+							np.expand_dims(batch['val']['label'].argmax(axis=3),axis=3).astype(np.int8))		# Accumulated epoch
 
 					data.patches['val']['prediction'][idx0:idx1]=(self.graph.predict(
 						batch['val']['in'].astype(np.float32),batch_size=self.batch['val']['size'])*13).astype(prediction_dtype)
@@ -2524,7 +2609,7 @@ class NetModel(NetObject):
 			if test_loop_each_epoch==True or self.early_stop['signal']==True or (self.stop_epoch>=0 and self.stop_epoch==epoch):
 				
 				print("======== BEGINNING TEST PREDICT... ============")
-				data.patches['test']['prediction']=np.zeros_like(data.patches['test']['label'][:,:,:,:,:-1],dtype=prediction_dtype)#.astype(prediction_dtype)
+				data.patches['test']['prediction']=np.zeros_like(data.patches['test']['label'][:,:,:,:-1],dtype=prediction_dtype)#.astype(prediction_dtype)
 				self.batch_test_stats=False
 
 				for batch_id in range(0, self.batch['test']['n']):
@@ -2536,11 +2621,11 @@ class NetModel(NetObject):
 
 					if self.batch_test_stats:
 						self.metrics['test']['loss'] += self.graph.test_on_batch(
-							batch['test']['in'].astype(np.float32), 
-							np.expand_dims(batch['test']['label'].argmax(axis=4),axis=4).astype(np.int16))		# Accumulated epoch
+							batch['test']['in'].astype(np.float16), 
+							np.expand_dims(batch['test']['label'].argmax(axis=3),axis=3).astype(np.int16))		# Accumulated epoch
 
 					data.patches['test']['prediction'][idx0:idx1]=(self.graph.predict(
-						batch['test']['in'].astype(np.float32),batch_size=self.batch['test']['size'])*13).astype(prediction_dtype)
+						batch['test']['in'].astype(np.float16),batch_size=self.batch['test']['size'])*13).astype(prediction_dtype)
 			#====================METRICS GET================================================#
 			deb.prints(data.patches['test']['label'].shape)	
 			deb.prints(data.patches['test']['prediction'].dtype)
@@ -2695,10 +2780,10 @@ if __name__ == '__main__':
 		deb.prints(data.patches['train']['label'].shape)
 		deb.prints(data.patches['test']['label'].shape)
 		
-		test_label_unique,test_label_count=np.unique(data.patches['test']['label'].argmax(axis=4),return_counts=True)
+		test_label_unique,test_label_count=np.unique(data.patches['test']['label'].argmax(axis=-1),return_counts=True)
 		deb.prints(test_label_unique)
 		deb.prints(test_label_count)
-		train_label_unique,train_label_count=np.unique(data.patches['train']['label'].argmax(axis=4),return_counts=True)
+		train_label_unique,train_label_count=np.unique(data.patches['train']['label'].argmax(axis=-1),return_counts=True)
 		deb.prints(train_label_unique)
 		deb.prints(train_label_count)
 		data.label_unique=test_label_unique.copy()
@@ -2732,13 +2817,14 @@ if __name__ == '__main__':
 			
 		print("=== AUGMENTING TRAINING DATA")
 
-		balancing=True
+		balancing=False
 		if balancing==True:
 			data.semantic_balance(500) #More for seq2seq
 				
 
 
 		model.loss_weights_estimate(data)
+		pathlib.Path(data.path_patches_bckndfixed).mkdir(parents=True, exist_ok=True)
 		np.save(data.path_patches_bckndfixed+'loss_weights.npy',model.loss_weights)
 		model.class_n-=1
 
@@ -2749,7 +2835,7 @@ if __name__ == '__main__':
 		# ===
 		def label_bcknd_from_0_to_last(label_one_hot,class_n):		
 			print("Changing bcknd from 0 to last...")
-			deb.prints(np.unique(label_one_hot.argmax(axis=4),return_counts=True))
+			deb.prints(np.unique(label_one_hot.argmax(axis=-1),return_counts=True))
 
 			label_h=np.reshape(label_one_hot,(-1,label_one_hot.shape[-1]))
 			print("label_h",label_h.shape)
@@ -2762,7 +2848,7 @@ if __name__ == '__main__':
 			deb.prints(out.shape)
 			out=np.reshape(out,(label_one_hot.shape))
 
-			deb.prints(np.unique(out.argmax(axis=4),return_counts=True))
+			deb.prints(np.unique(out.argmax(axis=-1),return_counts=True))
 
 			return out.astype(np.int8)	
 
@@ -2778,17 +2864,17 @@ if __name__ == '__main__':
 		# 	return out
 
 
-		deb.prints(data.patches['train']['label'][560,:,15,15,:])
+		deb.prints(data.patches['train']['label'][560,15,15,:])
 		data.patches['train']['label']=label_bcknd_from_0_to_last(
 			data.patches['train']['label'],model.class_n)
-		deb.prints(data.patches['train']['label'][560,:,15,15,:])
+		deb.prints(data.patches['train']['label'][560,15,15,:])
 
 		data.patches['test']['label']=label_bcknd_from_0_to_last(
 			data.patches['test']['label'],model.class_n)
 		data.patches['val']['label']=label_bcknd_from_0_to_last(
 			data.patches['val']['label'],model.class_n)
-		data.patches['test']['in']=data.patches['test']['in'].astype(np.float32)
-		data.patches['train']['in']=data.patches['train']['in'].astype(np.float32)		
+		data.patches['test']['in']=data.patches['test']['in'].astype(np.float16)
+		data.patches['train']['in']=data.patches['train']['in'].astype(np.float16)		
 		deb.prints(data.patches['val']['label'].shape)
 
 		#========== this is only for google colab. Ram usage should be lower
