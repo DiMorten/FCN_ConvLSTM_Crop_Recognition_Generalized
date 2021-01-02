@@ -15,10 +15,12 @@ set dataset=lm
 set dataSource=SAR
 set model=UUnet4ConvLSTM
 :: ==== EXTRACT PATCHES
-set id=fixed_width
+set id=fixed_width_inseq_noextend_noaug
 :: call patches_extract.bat %dataset% %dataSource%
 :: set id=less_jun18_1
 call experiment_automation.bat %id% %model% %dataset% %dataSource%
+
+
 :: set id=less_jun18_2
 :: call experiment_automation.bat %id% %model% %dataset% %dataSource%
 :: set id=less_jun18_3

@@ -249,11 +249,63 @@ class Dataset(NetObject):
 		deb.prints(self.patches['test']['in'].shape)
 		deb.prints(self.patches['train']['label'].shape)
 		self.dataset=None
-		unique=np.unique(self.patches['train']['label'])
+		unique,count=np.unique(self.patches['train']['label'],return_counts=True)
 		deb.prints(unique)
+		deb.prints(count)
+
 		self.dataset='seq1'
 
+
+		# ========================================= pick label for N to 1
+		deb.prints(args.seq_mode)
+		if args.seq_mode == 'fixed':
+			args.seq_label = -1
+			self.patches['train']['label'] = self.patches['train']['label'][:,args.seq_label]
+			self.patches['test']['label'] = self.patches['test']['label'][:,args.seq_label]
+
 		self.class_n=unique.shape[0] #10 plus background
+
+		# ======================================= fix labels before one hot
+		print("===== preprocessing labels")
+		classes = np.unique(self.patches['train']['label'])
+		deb.prints(classes)
+		
+		self.patches['train']['label'] = self.patches['train']['label']-1
+		self.patches['test']['label'] = self.patches['test']['label']-1
+		
+##            labels_val = labels_val-1
+		class_n_no_bkcnd = len(classes)-1
+		self.patches['train']['label'][self.patches['train']['label']==255] = class_n_no_bkcnd
+		self.patches['test']['label'][self.patches['test']['label']==255] = class_n_no_bkcnd
+
+		classes = np.unique(self.patches['train']['label'])
+		deb.prints(classes)
+
+##            labels_val[labels_val==255] = params.classes
+		tmp_tr = self.patches['train']['label'].copy()
+		tmp_tst = self.patches['test']['label'].copy()
+		
+##            tmp_val = labels_val.copy()
+
+		deb.prints(self.patches['train']['label'].shape)
+		deb.prints(np.unique(self.patches['train']['label'],return_counts=True))  
+		labels2new_labels = dict((c, i) for i, c in enumerate(classes))
+		new_labels2labels = dict((i, c) for i, c in enumerate(classes))
+		for j in range(len(classes)):
+			self.patches['train']['label'][tmp_tr == classes[j]] = labels2new_labels[classes[j]]
+			self.patches['test']['label'][tmp_tst == classes[j]] = labels2new_labels[classes[j]]
+
+##                labels_val[tmp_val == classes[j]] = labels2new_labels[classes[j]]
+		deb.prints(self.patches['train']['label'].shape)
+		deb.prints(np.unique(self.patches['train']['label'],return_counts=True))    
+
+		deb.prints(self.patches['test']['label'].shape)
+		deb.prints(np.unique(self.patches['test']['label'],return_counts=True))    
+		self.class_n=class_n_no_bkcnd+1 # counting bccknd
+
+
+		# ======================================= end fix labels
+
 		print("Switching to one hot")
 		self.patches['train']['label']=self.batch_label_to_one_hot(self.patches['train']['label'])
 		self.patches['test']['label']=self.batch_label_to_one_hot(self.patches['test']['label'])
@@ -287,20 +339,24 @@ class Dataset(NetObject):
 		self.patches['train']['idx']=range(self.patches['train']['n'])
 		np.save('labels_beginning.npy',self.patches['test']['label'])
 
-		deb.prints(args.seq_mode)
-		if args.seq_mode == 'fixed':
-			args.seq_label = -1
-			self.patches['train']['label'] = self.patches['train']['label'][:,args.seq_label]
-			self.patches['test']['label'] = self.patches['test']['label'][:,args.seq_label]
 		deb.prints(self.patches['train']['label'].shape)
-		#pdb.set_trace()
+
+
+		unique,count=np.unique(self.patches['train']['label'].argmax(axis=-1),return_counts=True)
+		deb.prints(unique)
+		deb.prints(count)
+
+		unique,count=np.unique(self.patches['test']['label'].argmax(axis=-1),return_counts=True)
+		deb.prints(unique)
+		deb.prints(count)
+
 
 	def batch_label_to_one_hot(self,im):
-		im_one_hot=np.zeros((im.shape[0],im.shape[1],im.shape[2],im.shape[3],self.class_n))
+		im_one_hot=np.zeros(im.shape+(self.class_n,))
 		print(im_one_hot.shape)
 		print(im.shape)
 		for clss in range(0,self.class_n):
-			im_one_hot[:,:,:,:,clss][im[:,:,:,:]==clss]=1
+			im_one_hot[..., clss][im == clss] = 1
 		return im_one_hot
 
 	def folder_load(self,folder_path): #move to patches_handler
@@ -2381,7 +2437,6 @@ class NetModel(NetObject):
 
 		deb.prints(self.loss_weights.shape)
 		deb.prints(self.loss_weights)
-		#pdb.set_trace()
 		
 	def test(self,data):
 		data.patches['train']['batch_n'] = data.patches['train']['in'].shape[0]//self.batch['train']['size']
@@ -2494,7 +2549,7 @@ class NetModel(NetObject):
 		self.batch['test']['n'] = data.patches['test']['in'].shape[0] // self.batch['test']['size']
 		self.batch['val']['n'] = data.patches['val']['in'].shape[0] // self.batch['val']['size']
 	
-		data.patches['test']['prediction']=np.zeros_like(data.patches['test']['label'][:,:,:,:-1], dtype=prediction_dtype)
+		data.patches['test']['prediction']=np.zeros_like(data.patches['test']['label'][...,:-1], dtype=prediction_dtype)
 		deb.prints(data.patches['test']['label'].shape)
 		deb.prints(self.batch['test']['n'])
 		
@@ -2548,7 +2603,7 @@ class NetModel(NetObject):
 			#================== VAL LOOP=====================#
 			if self.val_set:
 				deb.prints(data.patches['val']['label'].shape)
-				data.patches['val']['prediction']=np.zeros_like(data.patches['val']['label'][:,:,:,:-1],dtype=prediction_dtype)
+				data.patches['val']['prediction']=np.zeros_like(data.patches['val']['label'][...,:-1],dtype=prediction_dtype)
 				self.batch_test_stats=False
 
 				for batch_id in range(0, self.batch['val']['n']):
@@ -2609,7 +2664,7 @@ class NetModel(NetObject):
 			if test_loop_each_epoch==True or self.early_stop['signal']==True or (self.stop_epoch>=0 and self.stop_epoch==epoch):
 				
 				print("======== BEGINNING TEST PREDICT... ============")
-				data.patches['test']['prediction']=np.zeros_like(data.patches['test']['label'][:,:,:,:-1],dtype=prediction_dtype)#.astype(prediction_dtype)
+				data.patches['test']['prediction']=np.zeros_like(data.patches['test']['label'][...,:-1],dtype=prediction_dtype)#.astype(prediction_dtype)
 				self.batch_test_stats=False
 
 				for batch_id in range(0, self.batch['test']['n']):
@@ -2828,54 +2883,8 @@ if __name__ == '__main__':
 		np.save(data.path_patches_bckndfixed+'loss_weights.npy',model.loss_weights)
 		model.class_n-=1
 
-
-	if premade_split_patches_load==False:
 		# Label background from 0 to last. 
 		deb.prints(data.patches['train']['label'].shape)
-		# ===
-		def label_bcknd_from_0_to_last(label_one_hot,class_n):		
-			print("Changing bcknd from 0 to last...")
-			deb.prints(np.unique(label_one_hot.argmax(axis=-1),return_counts=True))
-
-			label_h=np.reshape(label_one_hot,(-1,label_one_hot.shape[-1]))
-			print("label_h",label_h.shape)
-			label_int=label_h.argmax(axis=1)
-			label_int[label_int==0]=class_n+1# This number counts the bcknd. So if 3 classes+bcknd=4, class_n=4
-			label_int-=1
-
-			out = np.zeros((label_int.shape[0], class_n+1))
-			out[np.arange(label_int.shape[0]),label_int]=1
-			deb.prints(out.shape)
-			out=np.reshape(out,(label_one_hot.shape))
-
-			deb.prints(np.unique(out.argmax(axis=-1),return_counts=True))
-
-			return out.astype(np.int8)	
-
-		# def label_bcknd_from_0_to_last(label,class_n):	
-		# 	print("Changing bcknd from 0 to last...")
-		# 	deb.prints(np.unique(label.argmax(axis=4),return_counts=True))
-
-		# 	out=np.zeros_like(label)
-		# 	valid_class_ids=[i for i in range(1,class_n+1)]
-		# 	out=label[:,:,:,:,valid_class_ids+[0]]
-		# 	deb.prints(np.unique(out.argmax(axis=4),return_counts=True))
-
-		# 	return out
-
-
-		deb.prints(data.patches['train']['label'][560,15,15,:])
-		data.patches['train']['label']=label_bcknd_from_0_to_last(
-			data.patches['train']['label'],model.class_n)
-		deb.prints(data.patches['train']['label'][560,15,15,:])
-
-		data.patches['test']['label']=label_bcknd_from_0_to_last(
-			data.patches['test']['label'],model.class_n)
-		data.patches['val']['label']=label_bcknd_from_0_to_last(
-			data.patches['val']['label'],model.class_n)
-		data.patches['test']['in']=data.patches['test']['in'].astype(np.float16)
-		data.patches['train']['in']=data.patches['train']['in'].astype(np.float16)		
-		deb.prints(data.patches['val']['label'].shape)
 
 		#========== this is only for google colab. Ram usage should be lower
 		if randomly_subsample_sets==True:
