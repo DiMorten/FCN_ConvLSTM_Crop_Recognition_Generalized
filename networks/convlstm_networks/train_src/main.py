@@ -48,8 +48,10 @@ import tensorflow as tf
 from patches_storage import PatchesStorageEachSample,PatchesStorageAllSamples
 from datagenerator import DataGenerator
 
+sys.path.append('../../../dataset/dataset/patches_extract_script/')
+from dataSource import DataSource, SARSource, OpticalSource, Dataset, LEM, CampoVerde, OpticalSourceWithClouds, Humidity
 
-sys.path.append('../')
+
 parser = argparse.ArgumentParser(description='')
 parser.add_argument('-tl', '--t_len', dest='t_len',
 					type=int, default=7, help='t len')
@@ -872,7 +874,7 @@ class Dataset(NetObject):
 class NetModel(NetObject):
 	def __init__(self, batch_size_train=32, batch_size_test=200, epochs=30000, 
 		patience=10, eval_mode='metrics', val_set=True,
-		model_type='DenseNet', time_measure=False, stop_epoch=0, *args, **kwargs):
+		model_type='DenseNet', time_measure=False, stop_epoch=0, dotys_sin=None, *args, **kwargs):
 
 		super().__init__(*args, **kwargs)
 		if self.debug >= 1:
@@ -903,6 +905,9 @@ class NetModel(NetObject):
 		deb.prints(self.mp)
 		self.stop_epoch=stop_epoch
 		deb.prints(self.stop_epoch)
+		self.dotys_sin = dotys_sin
+		self.dotys_sin = np.expand_dims(self.dotys_sin,axis=0)
+		self.dotys_sin = np.repeat(self.dotys_sin,self.batch['train']['size'],axis=0)
 	def transition_down(self, pipe, filters):
 		pipe = Conv2D(filters, (3, 3), strides=(2, 2), padding='same')(pipe)
 		pipe = keras.layers.BatchNormalization(axis=3)(pipe)
@@ -1683,21 +1688,21 @@ class NetModel(NetObject):
 										padding='same')(out)
 			self.graph = Model(in_im, out)
 			print(self.graph.summary())
-		if self.model_type=='UUnet4ConvLSTM':
 
-
-			
-			def slice_tensor(x,output_shape):
-				deb.prints(output_shape)
-				deb.prints(K.int_shape(x))
+		def slice_tensor(x,output_shape):
+			deb.prints(output_shape)
+			deb.prints(K.int_shape(x))
 #				res1 = Lambda(lambda x: x[:,:,:,-1], output_shape=output_shape)(x)
 #				res2 = Lambda(lambda x: x[:,:,:,-1], output_shape=output_shape[1:])(x)
-				res2 = Lambda(lambda x: x[:,-1])(x)
+			res2 = Lambda(lambda x: x[:,-1])(x)
 
 #				deb.prints(K.int_shape(res1))
-				deb.prints(K.int_shape(res2))
-				
-				return res2
+			deb.prints(K.int_shape(res2))
+			
+			return res2
+		if self.model_type=='UUnet4ConvLSTM':
+
+			
 			
 			concat_axis = 3
 
@@ -1740,6 +1745,63 @@ class NetModel(NetObject):
 										padding='same')(out)
 			self.graph = Model(in_im, out)
 			print(self.graph.summary())
+		if self.model_type=='UUnet4ConvLSTM_doty':
+			#self.t_len = 20
+			metadata_in = Input(shape=(self.t_len,))
+			
+			concat_axis = 3
+
+			#fs=32
+			fs=16
+
+			p1=dilated_layer(in_im,fs)			
+			p1=dilated_layer(p1,fs)
+			e1 = TimeDistributed(AveragePooling2D((2, 2), strides=(2, 2)))(p1)
+			p2=dilated_layer(e1,fs*2)
+			e2 = TimeDistributed(AveragePooling2D((2, 2), strides=(2, 2)))(p2)
+			p3=dilated_layer(e2,fs*4)
+			e3 = TimeDistributed(AveragePooling2D((2, 2), strides=(2, 2)))(p3)
+			metadata=Lambda(lambda x: K.expand_dims(x, 2))(metadata_in)
+			metadata=Lambda(lambda x: K.expand_dims(x, 2))(metadata)
+			metadata=Lambda(lambda x: K.expand_dims(x, 2))(metadata)
+
+			deb.prints(K.int_shape(metadata))
+
+			metadata = TimeDistributed(Lambda(lambda y: K.tf.image.resize_bilinear(y,size=(4,4))))(metadata)
+#				x = TimeDistributed(UpSampling2D(
+#					size=(self.patch_len,self.patch_len)))(x)
+			deb.prints(K.int_shape(metadata))
+
+			x = keras.layers.concatenate([e3, metadata], axis = concat_axis+1)
+			x = Bidirectional(ConvLSTM2D(128,3,return_sequences=False,
+					padding="same"),merge_mode='concat')(x)
+
+			d3 = transpose_layer(x,fs*4)
+			p3 = slice_tensor(p3, output_shape = K.int_shape(d3))
+			deb.prints(K.int_shape(p3))
+			deb.prints(K.int_shape(d3))
+			
+			d3 = keras.layers.concatenate([d3, p3], axis=concat_axis)
+			d3=dilated_layer_Nto1(d3,fs*4)
+			d2 = transpose_layer(d3,fs*2)
+			p2 = slice_tensor(p2, output_shape = K.int_shape(d2))
+			deb.prints(K.int_shape(p2))
+			deb.prints(K.int_shape(d2))
+
+			d2 = keras.layers.concatenate([d2, p2], axis=concat_axis)
+			d2=dilated_layer_Nto1(d2,fs*2)
+			d1 = transpose_layer(d2,fs)
+			p1 = slice_tensor(p1, output_shape = K.int_shape(d1))
+			deb.prints(K.int_shape(p1))
+			deb.prints(K.int_shape(d1))
+
+			d1 = keras.layers.concatenate([d1, p1], axis=concat_axis)
+			out=dilated_layer_Nto1(d1,fs)
+			out = Conv2D(self.class_n, (1, 1), activation=None,
+										padding='same')(out)
+			self.graph = Model(inputs=[in_im, metadata_in], outputs=out)
+			print(self.graph.summary())
+			#keras.utils.plot_model(model, show_shapes=True, to_file="model.png")	
 
 
 		if self.model_type=='BUnet4ConvLSTM_SkipLSTM':
@@ -2585,8 +2647,9 @@ class NetModel(NetObject):
 				#pdb.set_trace()
 				if self.time_measure==True:
 					start_time=time.time()
+				
 				self.metrics['train']['loss'] += self.graph.train_on_batch(
-					batch['train']['in'].astype(np.float16), 
+					[batch['train']['in'].astype(np.float16),self.dotys_sin], 
 					np.expand_dims(batch['train']['label'].argmax(axis=3),axis=3).astype(np.int8))		# Accumulated epoch
 				if self.time_measure==True:
 					batch_time=time.time()-start_time
@@ -2615,11 +2678,12 @@ class NetModel(NetObject):
 
 					if self.batch_test_stats:
 						self.metrics['val']['loss'] += self.graph.test_on_batch(
-							batch['val']['in'].astype(np.float16), 
+							[batch['val']['in'].astype(np.float16),self.dotys_sin],
 							np.expand_dims(batch['val']['label'].argmax(axis=3),axis=3).astype(np.int8))		# Accumulated epoch
 
 					data.patches['val']['prediction'][idx0:idx1]=(self.graph.predict(
-						batch['val']['in'].astype(np.float32),batch_size=self.batch['val']['size'])*13).astype(prediction_dtype)
+						[batch['val']['in'].astype(np.float32),self.dotys_sin],
+						batch_size=self.batch['val']['size'])*13).astype(prediction_dtype)
 				self.metrics['val']['loss'] /= self.batch['val']['n']
 
 				metrics_val=data.metrics_get(data.patches['val']['prediction'],data.patches['val']['label'],debug=2)
@@ -2676,11 +2740,12 @@ class NetModel(NetObject):
 
 					if self.batch_test_stats:
 						self.metrics['test']['loss'] += self.graph.test_on_batch(
-							batch['test']['in'].astype(np.float16), 
+							[batch['test']['in'].astype(np.float16),self.dotys_sin],
 							np.expand_dims(batch['test']['label'].argmax(axis=3),axis=3).astype(np.int16))		# Accumulated epoch
 
 					data.patches['test']['prediction'][idx0:idx1]=(self.graph.predict(
-						batch['test']['in'].astype(np.float16),batch_size=self.batch['test']['size'])*13).astype(prediction_dtype)
+						[batch['test']['in'].astype(np.float16),self.dotys_sin],
+						batch_size=self.batch['test']['size'])*13).astype(prediction_dtype)
 			#====================METRICS GET================================================#
 			deb.prints(data.patches['test']['label'].shape)	
 			deb.prints(data.patches['test']['prediction'].dtype)
@@ -2812,10 +2877,21 @@ if __name__ == '__main__':
 	patchesArray = PatchesArray()
 	time_measure=False
 
+
+	dataset='lm'
+	if dataset=='lm':
+		ds=LEM()
+	dataSource = SARSource()
+	ds.addDataSource(dataSource)
+	time_delta = ds.getTimeDelta(delta=True,format='days')
+	dotys, dotys_sin = ds.getDayOfTheYear()
+	#pdb.set_trace()
+
+
 	data = Dataset(patch_len=args.patch_len, patch_step_train=args.patch_step_train,
 		patch_step_test=args.patch_step_test,exp_id=args.exp_id,
-		path=args.path, t_len=args.t_len, class_n=args.class_n, channel_n = args.channel_n)
-
+		path=args.path, t_len=ds.t_len, class_n=args.class_n, channel_n = args.channel_n)
+	#t_len=args.t_len
 
 	args.patience=10
 
@@ -2855,7 +2931,8 @@ if __name__ == '__main__':
 					 patch_step_train=args.patch_step_train, eval_mode=args.eval_mode,
 					 batch_size_train=args.batch_size_train,batch_size_test=args.batch_size_test,
 					 patience=args.patience,t_len=args.t_len,class_n=args.class_n,channel_n=args.channel_n,path=args.path,
-					 val_set=val_set,model_type=args.model_type, time_measure=time_measure, stop_epoch=args.stop_epoch)
+					 val_set=val_set,model_type=args.model_type, time_measure=time_measure, stop_epoch=args.stop_epoch,
+					 dotys_sin=dotys_sin)
 	model.class_n=data.class_n-1 # Model is designed without background class
 	deb.prints(data.class_n)
 	model.build()
@@ -2872,7 +2949,7 @@ if __name__ == '__main__':
 			
 		print("=== AUGMENTING TRAINING DATA")
 
-		balancing=False
+		balancing=True
 		if balancing==True:
 			data.semantic_balance(500) #More for seq2seq
 				

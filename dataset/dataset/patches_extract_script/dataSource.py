@@ -249,15 +249,39 @@ class Dataset(object):
 		return self.class_n
 	def getClassList(self):
 		return self.class_list
-	def getTimeDelta(self):
+	def getTimeDelta(self,delta=False,format='seconds'):
 		time_delta=[]
 		for im in self.im_list:
 			date=im[:8]
 			print(date)
 			time_delta.append(time.mktime(datetime.datetime.strptime(date, 
                                              "%Y%m%d").timetuple()))
+		
+		time_delta = np.asarray(time_delta)
+		if delta==True:
+			time_delta = np.diff(time_delta)
+		if format=='days':
+			time_delta = time_delta/(60*60*24)
 		print(time_delta)
-		return np.asarray(time_delta)
+		return time_delta
+	def getDayOfTheYear(self):
+		dotys=[]
+		dotys_sin=[]
+		for im in self.im_list:
+			date=im[:8]
+			print(date)
+			doty = datetime.datetime.strptime(date, 
+                                             "%Y%m%d").timetuple().tm_yday
+			dotys.append(doty)
+			doty_sin = np.sin((doty-1)*(2.*np.pi/366))
+			doty_sin = (doty_sin + 1) / 2 # range [0,1]
+			dotys_sin.append(doty_sin.astype(np.float16))
+
+		print(dotys)
+		print(dotys_sin)
+		return np.asarray(dotys), np.asarray(dotys_sin)
+		
+
 	def im_load(self,patch,im_names,label_names,add_id,conf):
 		fname=sys._getframe().f_code.co_name
 		for t_step in range(0,conf["t_len"]):	
@@ -328,13 +352,16 @@ class LEM(Dataset):
 			
 			#self.im_list=['20170706_S1', '20170811_S1', '20170916_S1', '20171010_S1', '20171115_S1', '20171209_S1', '20180114_S1', '20180219_S1', '20180315_S1', '20180420_S1', '20180514_S1', '20180619_S1']
 			# lem dataset without last date jun
-			self.im_list=['20170612_S1', '20170706_S1', '20170811_S1', '20170916_S1', '20171010_S1', '20171115_S1', '20171209_S1', '20180114_S1', '20180219_S1', '20180315_S1', '20180420_S1', '20180514_S1']
+			#self.im_list=['20170612_S1', '20170706_S1', '20170811_S1', '20170916_S1', '20171010_S1', '20171115_S1', '20171209_S1', '20180114_S1', '20180219_S1', '20180315_S1', '20180420_S1', '20180514_S1']
 			# less 2 dates
 			##self.im_list=['20161015_S1','20161120_S1','20161214_S1','20170119_S1','20170212_S1','20170308_S1','20170413_S1','20170519_S1',
 			##	'20170612_S1', '20170706_S1', '20170811_S1', '20170916_S1', '20171010_S1', '20171115_S1', 
 			##	'20171209_S1', '20180114_S1', '20180219_S1', '20180315_S1', '20180420_S1', '20180514_S1'] 
+			# full but no 04 month didnt work
+			#self.im_list=['20161015_S1','20161120_S1','20161214_S1','20170119_S1','20170212_S1','20170308_S1','20170519_S1',
+			#	'20170612_S1', '20170706_S1', '20170811_S1', '20170916_S1', '20171010_S1', '20171115_S1', 
+			#	'20171209_S1', '20180114_S1', '20180219_S1', '20180315_S1', '20180420_S1', '20180514_S1']			
 			
-				#'20180619_S1']
 			self.label_list=self.im_list.copy()
 #			['20161015_S1','20161120_S1','20161214_S1','20170119_S1','20170212_S1','20170308_S1','20170413_S1','20170519_S1',
 #				'20170612_S1', '20170706_S1', '20170811_S1', '20170916_S1', '20171010_S1', '20171115_S1', 
