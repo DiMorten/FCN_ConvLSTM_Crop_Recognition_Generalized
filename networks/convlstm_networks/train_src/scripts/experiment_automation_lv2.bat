@@ -15,7 +15,7 @@ set dataset=lm
 set dataSource=SAR
 set model=UUnet4ConvLSTM_doty
 :: ==== EXTRACT PATCHES
-set id=fixed_width_inseq_extend_aug_tdelta_less04
+set id=fixed_width_inseq_noextend_aug_nodoty
 call patches_extract.bat %dataset% %dataSource%
 :: set id=less_jun18_1
 call experiment_automation.bat %id% %model% %dataset% %dataSource%
