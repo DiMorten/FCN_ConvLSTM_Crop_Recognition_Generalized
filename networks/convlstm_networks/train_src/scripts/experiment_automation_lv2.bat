@@ -14,9 +14,11 @@ set dataset=lm
 ::dataSource='SAR'
 set dataSource=SAR
 set model=UUnet4ConvLSTM_doty
+:: set model=UUnet4ConvLSTM
+
 :: ==== EXTRACT PATCHES
-set id=fixed_width_inseq_noextend_aug_nodoty
-call patches_extract.bat %dataset% %dataSource%
+set id=fixed_width_inseq_noextend_aug_doty2
+:: call patches_extract.bat %dataset% %dataSource%
 :: set id=less_jun18_1
 call experiment_automation.bat %id% %model% %dataset% %dataSource%
 

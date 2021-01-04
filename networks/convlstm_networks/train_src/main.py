@@ -893,6 +893,10 @@ class NetModel(NetObject):
 					'signal':False,
 					'patience':patience}
 		self.model_type=model_type
+		if self.model_type == 'UUnet4ConvLSTM_doty':		
+			self.doty_flag = True
+		else:
+			self.doty_flag = False
 		with open(self.report['best']['text_history_path'], "w") as text_file:
 			text_file.write("epoch,oa,aa,f1,class_acc\n")
 
@@ -2578,7 +2582,11 @@ class NetModel(NetObject):
 			#else:
 				#self.early_stop["signal"]=False
 			
-			
+	def addDoty(self, input_):
+		if self.doty_flag==True:
+			input_ = [input_, self.dotys_sin]
+		return input_	
+
 	def train_loop(self, data):
 		print('Start the training')
 		cback_tboard = keras.callbacks.TensorBoard(
@@ -2648,8 +2656,10 @@ class NetModel(NetObject):
 				if self.time_measure==True:
 					start_time=time.time()
 				
+				input_ = batch['train']['in'].astype(np.float16)
+				input_ = self.addDoty(input_)
 				self.metrics['train']['loss'] += self.graph.train_on_batch(
-					[batch['train']['in'].astype(np.float16),self.dotys_sin], 
+					input_, 
 					np.expand_dims(batch['train']['label'].argmax(axis=3),axis=3).astype(np.int8))		# Accumulated epoch
 				if self.time_measure==True:
 					batch_time=time.time()-start_time
@@ -2677,12 +2687,16 @@ class NetModel(NetObject):
 					batch['val']['label'] = data.patches['val']['label'][idx0:idx1]
 
 					if self.batch_test_stats:
+						input_ = batch['val']['in'].astype(np.float16)
+						input_ = self.addDoty(input_)
 						self.metrics['val']['loss'] += self.graph.test_on_batch(
-							[batch['val']['in'].astype(np.float16),self.dotys_sin],
+							input_,
 							np.expand_dims(batch['val']['label'].argmax(axis=3),axis=3).astype(np.int8))		# Accumulated epoch
 
+					input_ = batch['val']['in'].astype(np.float16)
+					input_ = self.addDoty(input_)
 					data.patches['val']['prediction'][idx0:idx1]=(self.graph.predict(
-						[batch['val']['in'].astype(np.float32),self.dotys_sin],
+						input_,
 						batch_size=self.batch['val']['size'])*13).astype(prediction_dtype)
 				self.metrics['val']['loss'] /= self.batch['val']['n']
 
@@ -2739,12 +2753,17 @@ class NetModel(NetObject):
 					batch['test']['label'] = data.patches['test']['label'][idx0:idx1]
 
 					if self.batch_test_stats:
+						input_ = batch['test']['in'].astype(np.float16)
+						input_ = self.addDoty(input_)
 						self.metrics['test']['loss'] += self.graph.test_on_batch(
-							[batch['test']['in'].astype(np.float16),self.dotys_sin],
+							input_,
 							np.expand_dims(batch['test']['label'].argmax(axis=3),axis=3).astype(np.int16))		# Accumulated epoch
 
+
+					input_ = batch['test']['in'].astype(np.float16)
+					input_ = self.addDoty(input_)
 					data.patches['test']['prediction'][idx0:idx1]=(self.graph.predict(
-						[batch['test']['in'].astype(np.float16),self.dotys_sin],
+						input_,
 						batch_size=self.batch['test']['size'])*13).astype(prediction_dtype)
 			#====================METRICS GET================================================#
 			deb.prints(data.patches['test']['label'].shape)	
