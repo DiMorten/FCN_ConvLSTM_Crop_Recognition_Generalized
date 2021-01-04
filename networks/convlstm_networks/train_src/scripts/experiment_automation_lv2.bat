@@ -17,7 +17,7 @@ set model=UUnet4ConvLSTM_doty
 :: set model=UUnet4ConvLSTM
 
 :: ==== EXTRACT PATCHES
-set id=fixed_width_inseq_noextend_aug_doty2
+set id=fixed_width_inseq_extend_aug_doty_less04
 :: call patches_extract.bat %dataset% %dataSource%
 :: set id=less_jun18_1
 call experiment_automation.bat %id% %model% %dataset% %dataSource%

@@ -1721,8 +1721,8 @@ class NetModel(NetObject):
 			p3=dilated_layer(e2,fs*4)
 			e3 = TimeDistributed(AveragePooling2D((2, 2), strides=(2, 2)))(p3)
 
-			x = Bidirectional(ConvLSTM2D(128,3,return_sequences=False,
-					padding="same"),merge_mode='concat')(e3)
+			x = ConvLSTM2D(128,3,return_sequences=False,
+					padding="same")(e3)
 
 			d3 = transpose_layer(x,fs*4)
 			p3 = slice_tensor(p3, output_shape = K.int_shape(d3))
@@ -1777,8 +1777,8 @@ class NetModel(NetObject):
 			deb.prints(K.int_shape(metadata))
 
 			x = keras.layers.concatenate([e3, metadata], axis = concat_axis+1)
-			x = Bidirectional(ConvLSTM2D(128,3,return_sequences=False,
-					padding="same"),merge_mode='concat')(x)
+			x = ConvLSTM2D(128,3,return_sequences=False,
+					padding="same")(x)
 
 			d3 = transpose_layer(x,fs*4)
 			p3 = slice_tensor(p3, output_shape = K.int_shape(d3))
@@ -2949,7 +2949,7 @@ if __name__ == '__main__':
 	model = NetModel(epochs=args.epochs, patch_len=args.patch_len,
 					 patch_step_train=args.patch_step_train, eval_mode=args.eval_mode,
 					 batch_size_train=args.batch_size_train,batch_size_test=args.batch_size_test,
-					 patience=args.patience,t_len=args.t_len,class_n=args.class_n,channel_n=args.channel_n,path=args.path,
+					 patience=args.patience,t_len=ds.t_len,class_n=args.class_n,channel_n=args.channel_n,path=args.path,
 					 val_set=val_set,model_type=args.model_type, time_measure=time_measure, stop_epoch=args.stop_epoch,
 					 dotys_sin=dotys_sin)
 	model.class_n=data.class_n-1 # Model is designed without background class

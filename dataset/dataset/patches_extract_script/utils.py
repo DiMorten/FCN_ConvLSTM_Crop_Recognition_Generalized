@@ -263,7 +263,7 @@ class DataForNet(object):
 		deb.prints((self.conf["t_len"],)+self.patch_shape)
 
 		#patch["values"]=np.zeros((self.conf["t_len"],)+patch_shape)
-		patch["full_ims"]=np.zeros((self.conf["t_len"],)+self.conf["im_3d_size"]).astype(np.float32)
+		patch["full_ims"]=np.zeros((self.conf["t_len"],)+self.conf["im_3d_size"]).astype(np.float16)
 		patch["full_label_ims"]=np.zeros((self.conf["t_len"],)+self.conf["im_3d_size"][0:2]).astype(np.int8)
 
 		#for t_step in range(0,self.conf["t_len"]):
@@ -303,7 +303,7 @@ class DataForNet(object):
 
 		# ==================== histogram before normalization
 
-		patch["full_ims"]=self.dataSource.im_seq_normalize3(patch["full_ims"],patch["train_mask"])
+		##patch["full_ims"]=self.dataSource.im_seq_normalize3(patch["full_ims"],patch["train_mask"])
 		#patch["full_ims"]=self.dataSource.im_seq_normalize_hwt(patch["full_ims"],patch["train_mask"])
 
 		deb.prints(np.min(patch["full_ims"]))
@@ -314,8 +314,8 @@ class DataForNet(object):
 		calcAverageTimeSeriesFlag=False
 		if calcAverageTimeSeriesFlag==True:
 			print("============ Beginning calc average timeseries ============")
-			#self.datasetStats.calcAverageTimeseries(patch["full_ims"],patch["train_mask"])
-			self.datasetStats.calcAverageTimeseriesPerClass(patch["full_ims"],patch["train_mask"],patch["full_label_ims"])
+			self.datasetStats.calcAverageTimeseries(patch["full_ims"],patch["train_mask"])
+			#self.datasetStats.calcAverageTimeseriesPerClass(patch["full_ims"],patch["train_mask"],patch["full_label_ims"])
 			pdb.set_trace()
 
 
