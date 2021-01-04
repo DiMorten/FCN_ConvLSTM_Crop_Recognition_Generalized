@@ -1721,7 +1721,7 @@ class NetModel(NetObject):
 			p3=dilated_layer(e2,fs*4)
 			e3 = TimeDistributed(AveragePooling2D((2, 2), strides=(2, 2)))(p3)
 
-			x = ConvLSTM2D(128,3,return_sequences=False,
+			x = ConvLSTM2D(256,3,return_sequences=False,
 					padding="same")(e3)
 
 			d3 = transpose_layer(x,fs*4)

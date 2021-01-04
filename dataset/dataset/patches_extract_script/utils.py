@@ -303,7 +303,7 @@ class DataForNet(object):
 
 		# ==================== histogram before normalization
 
-		##patch["full_ims"]=self.dataSource.im_seq_normalize3(patch["full_ims"],patch["train_mask"])
+		patch["full_ims"]=self.dataSource.im_seq_normalize3(patch["full_ims"],patch["train_mask"])
 		#patch["full_ims"]=self.dataSource.im_seq_normalize_hwt(patch["full_ims"],patch["train_mask"])
 
 		deb.prints(np.min(patch["full_ims"]))
