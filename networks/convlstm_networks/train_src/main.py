@@ -264,6 +264,10 @@ class Dataset(NetObject):
 			args.seq_label = -1
 			self.patches['train']['label'] = self.patches['train']['label'][:,args.seq_label]
 			self.patches['test']['label'] = self.patches['test']['label'][:,args.seq_label]
+		elif args.seq_mode == 'var':
+			self.labeled_dates = 12
+			self.patches['train']['label'] = self.patches['train']['label'][-self.labeled_dates:]
+			self.patches['test']['label'] = self.patches['test']['label'][-self.labeled_dates:]
 
 		self.class_n=unique.shape[0] #10 plus background
 
@@ -743,14 +747,19 @@ class Dataset(NetObject):
 		self.patches['train']['label']=np.delete(self.patches['train']['label'],self.patches['val']['idx'],axis=0)
 		#deb.prints(data.patches['train']['in'].shape)
 		#deb.prints(data.patches['train']['label'].shape)
-	def semantic_balance(self,samples_per_class=500): # samples mean sequence of patches. Keep
+	def semantic_balance(self,samples_per_class=500,label_type='Nto1'): # samples mean sequence of patches. Keep
 		print("data.semantic_balance")
 		
 		# Count test
 		patch_count=np.zeros(self.class_n)
-
+		if label_type == 'NtoN':
+			patch_count_axis = (1,2,3)
+			rotation_axis = (2,3)
+		elif label_type == 'Nto1':	
+			patch_count_axis = (1,2)
+			rotation_axis = (1,2)
 		for clss in range(self.class_n):
-			patch_count[clss]=np.count_nonzero(np.isin(self.patches['test']['label'].argmax(axis=-1),clss).sum(axis=(1,2)))
+			patch_count[clss]=np.count_nonzero(np.isin(self.patches['test']['label'].argmax(axis=-1),clss).sum(axis=patch_count_axis))
 		deb.prints(patch_count.shape)
 		print("Test",patch_count)
 		
@@ -758,7 +767,7 @@ class Dataset(NetObject):
 		patch_count=np.zeros(self.class_n)
 
 		for clss in range(self.class_n):
-			patch_count[clss]=np.count_nonzero(np.isin(self.patches['train']['label'].argmax(axis=-1),clss).sum(axis=(1,2)))
+			patch_count[clss]=np.count_nonzero(np.isin(self.patches['train']['label'].argmax(axis=-1),clss).sum(axis=patch_count_axis))
 		deb.prints(patch_count.shape)
 		print("Train",patch_count)
 		
@@ -808,23 +817,23 @@ class Dataset(NetObject):
 						
 						if cont_transf == 0:
 							augmented_data_temp = np.rot90(augmented_data_temp,1,(2,3))
-							augmented_label_temp = np.rot90(augmented_label_temp,1,(1,2))
+							augmented_label_temp = np.rot90(augmented_label_temp,1,rotation_axis)
 						
 						elif cont_transf == 1:
 							augmented_data_temp = np.rot90(augmented_data_temp,2,(2,3))
-							augmented_label_temp = np.rot90(augmented_label_temp,2,(1,2))
+							augmented_label_temp = np.rot90(augmented_label_temp,2,rotation_axis)
 
 						elif cont_transf == 2:
 							augmented_data_temp = np.flip(augmented_data_temp,2)
-							augmented_label_temp = np.flip(augmented_label_temp,1)
+							augmented_label_temp = np.flip(augmented_label_temp,rotation_axis[0])
 							
 						elif cont_transf == 3:
 							augmented_data_temp = np.flip(augmented_data_temp,3)
-							augmented_label_temp = np.flip(augmented_label_temp,2)
+							augmented_label_temp = np.flip(augmented_label_temp,rotation_axis[1])
 						
 						elif cont_transf == 4:
 							augmented_data_temp = np.rot90(augmented_data_temp,3,(2,3))
-							augmented_label_temp = np.rot90(augmented_label_temp,3,(1,2))
+							augmented_label_temp = np.rot90(augmented_label_temp,3,rotation_axis)
 							
 						elif cont_transf == 5:
 							augmented_data_temp = augmented_data_temp
@@ -1680,13 +1689,13 @@ class NetModel(NetObject):
 					padding="same"),merge_mode='concat')(e3)
 
 			d3 = transpose_layer(x,fs*4)
-			d3 = keras.layers.concatenate([d3, p3], axis=concat_axis)
+			d3 = keras.layers.concatenate([d3, p3], axis=-1)
 			d3=dilated_layer_Nto1(d3,fs*4)
 			d2 = transpose_layer(d3,fs*2)
-			d2 = keras.layers.concatenate([d2, p2], axis=concat_axis)
+			d2 = keras.layers.concatenate([d2, p2], axis=-1)
 			d2=dilated_layer_Nto1(d2,fs*2)
 			d1 = transpose_layer(d2,fs)
-			d1 = keras.layers.concatenate([d1, p1], axis=concat_axis)
+			d1 = keras.layers.concatenate([d1, p1], axis=-1)
 			out=dilated_layer_Nto1(d1,fs)
 			out = Conv2D(self.class_n, (1, 1), activation=None,
 										padding='same')(out)
@@ -1729,21 +1738,21 @@ class NetModel(NetObject):
 			deb.prints(K.int_shape(p3))
 			deb.prints(K.int_shape(d3))
 			
-			d3 = keras.layers.concatenate([d3, p3], axis=concat_axis)
+			d3 = keras.layers.concatenate([d3, p3], axis=-1)
 			d3=dilated_layer_Nto1(d3,fs*4)
 			d2 = transpose_layer(d3,fs*2)
 			p2 = slice_tensor(p2, output_shape = K.int_shape(d2))
 			deb.prints(K.int_shape(p2))
 			deb.prints(K.int_shape(d2))
 
-			d2 = keras.layers.concatenate([d2, p2], axis=concat_axis)
+			d2 = keras.layers.concatenate([d2, p2], axis=-1)
 			d2=dilated_layer_Nto1(d2,fs*2)
 			d1 = transpose_layer(d2,fs)
 			p1 = slice_tensor(p1, output_shape = K.int_shape(d1))
 			deb.prints(K.int_shape(p1))
 			deb.prints(K.int_shape(d1))
 
-			d1 = keras.layers.concatenate([d1, p1], axis=concat_axis)
+			d1 = keras.layers.concatenate([d1, p1], axis=-1)
 			out=dilated_layer_Nto1(d1,fs)
 			out = Conv2D(self.class_n, (1, 1), activation=None,
 										padding='same')(out)
@@ -1776,7 +1785,7 @@ class NetModel(NetObject):
 #					size=(self.patch_len,self.patch_len)))(x)
 			deb.prints(K.int_shape(metadata))
 
-			x = keras.layers.concatenate([e3, metadata], axis = concat_axis+1)
+			x = keras.layers.concatenate([e3, metadata], axis = -1)
 			x = ConvLSTM2D(128,3,return_sequences=False,
 					padding="same")(x)
 
@@ -1785,21 +1794,21 @@ class NetModel(NetObject):
 			deb.prints(K.int_shape(p3))
 			deb.prints(K.int_shape(d3))
 			
-			d3 = keras.layers.concatenate([d3, p3], axis=concat_axis)
+			d3 = keras.layers.concatenate([d3, p3], axis=-1)
 			d3=dilated_layer_Nto1(d3,fs*4)
 			d2 = transpose_layer(d3,fs*2)
 			p2 = slice_tensor(p2, output_shape = K.int_shape(d2))
 			deb.prints(K.int_shape(p2))
 			deb.prints(K.int_shape(d2))
 
-			d2 = keras.layers.concatenate([d2, p2], axis=concat_axis)
+			d2 = keras.layers.concatenate([d2, p2], axis=-1)
 			d2=dilated_layer_Nto1(d2,fs*2)
 			d1 = transpose_layer(d2,fs)
 			p1 = slice_tensor(p1, output_shape = K.int_shape(d1))
 			deb.prints(K.int_shape(p1))
 			deb.prints(K.int_shape(d1))
 
-			d1 = keras.layers.concatenate([d1, p1], axis=concat_axis)
+			d1 = keras.layers.concatenate([d1, p1], axis=-1)
 			out=dilated_layer_Nto1(d1,fs)
 			out = Conv2D(self.class_n, (1, 1), activation=None,
 										padding='same')(out)
@@ -2629,6 +2638,15 @@ class NetModel(NetObject):
 		#data.im_reconstruct(subset='test',mode='label')
 		#for epoch in [0,1]:
 		init_time=time.time()
+
+		batch['train']['shape'] = (self.batch['train']['size'], self.t_len)
+			+ data.patches['train']['in'].shape[2:]
+		deb.prints(batch['train']['shape'])
+		#data.labeled_dates = 12
+		deb.prints(data.labeled_dates)
+		min_seq_len = self.t_len - data.labeled_dates + 1 # 20 - 12 + 1 = 9
+		deb.prints(min_seq_len)
+
 		#==============================START TRAIN/TEST LOOP============================#
 		for epoch in range(self.epochs):
 
@@ -2656,11 +2674,41 @@ class NetModel(NetObject):
 				if self.time_measure==True:
 					start_time=time.time()
 				
-				input_ = batch['train']['in'].astype(np.float16)
+				
+				# set label N to 1
+
+				# self.t_len is 20 as an example 
+				label_date_id = np.random.randint(-data.labeled_dates,0) # labels can be from -1 to -12
+				# example: last t_step can use entire sequence: 20 + (-1+1) = 20
+				# example: first t_step can use sequence: 20 + (-12+1) = 9
+				# to do: add sep17 image 
+				max_seq_len = self.t_len + (label_date_id+1) # from 9 to 20
+				
+				if min_seq_len == max_seq_len:
+					batch_seq_len = min_seq_len
+				else:
+					batch_seq_len = np.random.randint(min_seq_len,max_seq_len+1) # from 9 to 20 in the largest case
+
+				# example: -1-20+1:-1 = -20:-1
+				# example: -12-9+1:-1 = -20:-12
+				batch['train']['in'] = batch['train']['in'][:, label_date_id-batch_seq_len+1:label_date_id] 
+				deb.prints(batch['train']['in'].shape[1] == batch_seq_len)
+				deb.prints(batch_seq_len)
+				deb.prints(label_date_id)
+				assert batch['train']['in'].shape[1] == batch_seq_len
+
+				input_ = np.zeros(batch['train']['shape']).astype(np.float16)
+				input_[:, -batch_seq_len:] = batch['train']['in']
+
+				gt = np.expand_dims(batch['train']['label'].argmax(axis=-1),axis=-1).astype(np.int8)
+				gt = gt[:, label_date_id] # N to 1 label is selected
+
+
 				input_ = self.addDoty(input_)
+
 				self.metrics['train']['loss'] += self.graph.train_on_batch(
 					input_, 
-					np.expand_dims(batch['train']['label'].argmax(axis=3),axis=3).astype(np.int8))		# Accumulated epoch
+					gt)		# Accumulated epoch
 				if self.time_measure==True:
 					batch_time=time.time()-start_time
 					print(batch_time)
@@ -2691,7 +2739,7 @@ class NetModel(NetObject):
 						input_ = self.addDoty(input_)
 						self.metrics['val']['loss'] += self.graph.test_on_batch(
 							input_,
-							np.expand_dims(batch['val']['label'].argmax(axis=3),axis=3).astype(np.int8))		# Accumulated epoch
+							np.expand_dims(batch['val']['label'].argmax(axis=-1),axis=-1).astype(np.int8))		# Accumulated epoch
 
 					input_ = batch['val']['in'].astype(np.float16)
 					input_ = self.addDoty(input_)
@@ -2757,7 +2805,7 @@ class NetModel(NetObject):
 						input_ = self.addDoty(input_)
 						self.metrics['test']['loss'] += self.graph.test_on_batch(
 							input_,
-							np.expand_dims(batch['test']['label'].argmax(axis=3),axis=3).astype(np.int16))		# Accumulated epoch
+							np.expand_dims(batch['test']['label'].argmax(axis=-1),axis=-1).astype(np.int16))		# Accumulated epoch
 
 
 					input_ = batch['test']['in'].astype(np.float16)
