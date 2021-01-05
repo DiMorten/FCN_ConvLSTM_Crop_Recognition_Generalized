@@ -105,7 +105,7 @@ if args.patch_step_test==None:
 
 deb.prints(args.patch_step_test)
 
-
+#args.seq_mode = 'var'
 #========= overwrite for direct execution of this py file
 direct_execution=False
 if direct_execution==True:
@@ -265,6 +265,7 @@ class Dataset(NetObject):
 			self.patches['train']['label'] = self.patches['train']['label'][:,args.seq_label]
 			self.patches['test']['label'] = self.patches['test']['label'][:,args.seq_label]
 		elif args.seq_mode == 'var':
+
 			self.labeled_dates = 12
 			self.patches['train']['label'] = self.patches['train']['label'][-self.labeled_dates:]
 			self.patches['test']['label'] = self.patches['test']['label'][-self.labeled_dates:]
@@ -2639,13 +2640,16 @@ class NetModel(NetObject):
 		#for epoch in [0,1]:
 		init_time=time.time()
 
-		batch['train']['shape'] = (self.batch['train']['size'], self.t_len)
-			+ data.patches['train']['in'].shape[2:]
-		deb.prints(batch['train']['shape'])
-		#data.labeled_dates = 12
-		deb.prints(data.labeled_dates)
-		min_seq_len = self.t_len - data.labeled_dates + 1 # 20 - 12 + 1 = 9
-		deb.prints(min_seq_len)
+		if args.seq_mode=='var':
+			batch['train']['shape'] = (self.batch['train']['size'], self.t_len) + data.patches['train']['in'].shape[2:]
+			deb.prints(batch['train']['shape'])
+			#data.labeled_dates = 12
+			deb.prints(data.labeled_dates)
+			min_seq_len = self.t_len - data.labeled_dates + 1 # 20 - 12 + 1 = 9
+			deb.prints(min_seq_len)
+
+			data.patches['val']['label'] = data.patches['val']['label'][:, -1]
+			data.patches['test']['label'] = data.patches['test']['label'][:, -1]
 
 		#==============================START TRAIN/TEST LOOP============================#
 		for epoch in range(self.epochs):
@@ -2676,32 +2680,34 @@ class NetModel(NetObject):
 				
 				
 				# set label N to 1
+				if args.seq_mode=='var':
+					# self.t_len is 20 as an example 
+					label_date_id = np.random.randint(-data.labeled_dates,0) # labels can be from -1 to -12
+					# example: last t_step can use entire sequence: 20 + (-1+1) = 20
+					# example: first t_step can use sequence: 20 + (-12+1) = 9
+					# to do: add sep17 image 
+					max_seq_len = self.t_len + (label_date_id+1) # from 9 to 20
+					
+					if min_seq_len == max_seq_len:
+						batch_seq_len = min_seq_len
+					else:
+						batch_seq_len = np.random.randint(min_seq_len,max_seq_len+1) # from 9 to 20 in the largest case
 
-				# self.t_len is 20 as an example 
-				label_date_id = np.random.randint(-data.labeled_dates,0) # labels can be from -1 to -12
-				# example: last t_step can use entire sequence: 20 + (-1+1) = 20
-				# example: first t_step can use sequence: 20 + (-12+1) = 9
-				# to do: add sep17 image 
-				max_seq_len = self.t_len + (label_date_id+1) # from 9 to 20
-				
-				if min_seq_len == max_seq_len:
-					batch_seq_len = min_seq_len
+					# example: -1-20+1:-1 = -20:-1
+					# example: -12-9+1:-1 = -20:-12
+					batch['train']['in'] = batch['train']['in'][:, label_date_id-batch_seq_len+1:label_date_id] 
+					deb.prints(batch['train']['in'].shape[1] == batch_seq_len)
+					deb.prints(batch_seq_len)
+					deb.prints(label_date_id)
+					assert batch['train']['in'].shape[1] == batch_seq_len
+
+					input_ = np.zeros(batch['train']['shape']).astype(np.float16)
+					input_[:, -batch_seq_len:] = batch['train']['in']
 				else:
-					batch_seq_len = np.random.randint(min_seq_len,max_seq_len+1) # from 9 to 20 in the largest case
-
-				# example: -1-20+1:-1 = -20:-1
-				# example: -12-9+1:-1 = -20:-12
-				batch['train']['in'] = batch['train']['in'][:, label_date_id-batch_seq_len+1:label_date_id] 
-				deb.prints(batch['train']['in'].shape[1] == batch_seq_len)
-				deb.prints(batch_seq_len)
-				deb.prints(label_date_id)
-				assert batch['train']['in'].shape[1] == batch_seq_len
-
-				input_ = np.zeros(batch['train']['shape']).astype(np.float16)
-				input_[:, -batch_seq_len:] = batch['train']['in']
-
+					input_ = batch['train']['in'].astype(np.float16)
 				gt = np.expand_dims(batch['train']['label'].argmax(axis=-1),axis=-1).astype(np.int8)
-				gt = gt[:, label_date_id] # N to 1 label is selected
+				if args.seq_mode=='var':
+					gt = gt[:, label_date_id] # N to 1 label is selected
 
 
 				input_ = self.addDoty(input_)
@@ -2737,6 +2743,7 @@ class NetModel(NetObject):
 					if self.batch_test_stats:
 						input_ = batch['val']['in'].astype(np.float16)
 						input_ = self.addDoty(input_)
+
 						self.metrics['val']['loss'] += self.graph.test_on_batch(
 							input_,
 							np.expand_dims(batch['val']['label'].argmax(axis=-1),axis=-1).astype(np.int8))		# Accumulated epoch
@@ -2745,7 +2752,7 @@ class NetModel(NetObject):
 					input_ = self.addDoty(input_)
 					data.patches['val']['prediction'][idx0:idx1]=(self.graph.predict(
 						input_,
-						batch_size=self.batch['val']['size'])*13).astype(prediction_dtype)
+						batch_size=self.batch['val']['size'])).astype(prediction_dtype) #*13
 				self.metrics['val']['loss'] /= self.batch['val']['n']
 
 				metrics_val=data.metrics_get(data.patches['val']['prediction'],data.patches['val']['label'],debug=2)
@@ -2812,7 +2819,7 @@ class NetModel(NetObject):
 					input_ = self.addDoty(input_)
 					data.patches['test']['prediction'][idx0:idx1]=(self.graph.predict(
 						input_,
-						batch_size=self.batch['test']['size'])*13).astype(prediction_dtype)
+						batch_size=self.batch['test']['size'])).astype(prediction_dtype) #*13
 			#====================METRICS GET================================================#
 			deb.prints(data.patches['test']['label'].shape)	
 			deb.prints(data.patches['test']['prediction'].dtype)
@@ -2868,7 +2875,7 @@ class NetModel(NetObject):
 			#	break
 
 
-			deb.prints(metrics['confusion_matrix'])
+			##deb.prints(metrics['confusion_matrix'])
 			#metrics['average_acc'],metrics['per_class_acc']=self.average_acc(data['prediction_h'],data['label_h'])
 			deb.prints(metrics['per_class_acc'])
 			if self.val_set:
@@ -3018,7 +3025,12 @@ if __name__ == '__main__':
 
 		balancing=True
 		if balancing==True:
-			data.semantic_balance(500) #More for seq2seq
+			if args.seq_mode=='fixed':
+				label_type = 'Nto1'
+			elif args.seq_mode=='var':	
+				label_type = 'NtoN'
+			deb.prints(label_type)
+			data.semantic_balance(500,label_type = label_type) #More for seq2seq
 				
 
 
