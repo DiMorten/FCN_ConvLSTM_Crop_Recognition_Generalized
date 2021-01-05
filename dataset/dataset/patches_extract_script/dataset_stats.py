@@ -20,7 +20,7 @@ class DatasetStats():
                 mask_t=mask.flatten()
                 #print("im shape: {}, mask shape: {}".format(im.shape,mask.shape))
 
-                im=im[mask==1] # only train and test pixels (1 and 2)
+                im=im[mask_t==1] # only train and test pixels (1 and 2)
                 averageTimeseries.append(np.average(im))
             averageTimeseries=np.asarray(averageTimeseries)
             plt.figure(channel)
@@ -29,6 +29,7 @@ class DatasetStats():
             ax.set(xlabel='time ID', ylabel='band',title='Image average over time')
             plt.grid()
             print('averageTimeseries',averageTimeseries)
+            plt.show()
     def calcAverageTimeseriesPerClass(self,ims,mask,label):
         print("Label shape",label.shape)
         time_delta=self.dataset.getTimeDelta()
