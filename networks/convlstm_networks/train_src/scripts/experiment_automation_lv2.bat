@@ -17,7 +17,7 @@ set model=UUnet4ConvLSTM
 :: set model=UUnet4ConvLSTM
 
 :: ==== EXTRACT PATCHES
-set id=fixed_width_may18_ext
+set id=fixed_width_may18_noext_f1es
 call patches_extract.bat %dataset% %dataSource%
 :: set id=less_jun18_1
 call experiment_automation.bat %id% %model% %dataset% %dataSource%

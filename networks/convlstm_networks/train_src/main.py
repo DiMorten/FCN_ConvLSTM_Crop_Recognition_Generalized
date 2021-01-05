@@ -2702,7 +2702,7 @@ class NetModel(NetObject):
 
 				metrics_val=data.metrics_get(data.patches['val']['prediction'],data.patches['val']['label'],debug=2)
 
-				self.early_stop_check(metrics_val,epoch)
+				self.early_stop_check(metrics_val,epoch,most_important='f1_score')
 				#if epoch==1000 or epoch==700 or epoch==500 or epoch==1200:
 				#	self.early_stop['signal']=True
 				#else:
