@@ -265,8 +265,9 @@ class Dataset(object):
 		print(time_delta)
 		return time_delta
 	def getDayOfTheYear(self):
-		dotys=[]
-		dotys_sin=[]
+		dotys = []
+		dotys_sin = []
+		dotys_cos = []
 		for im in self.im_list:
 			date=im[:8]
 			print(date)
@@ -277,9 +278,22 @@ class Dataset(object):
 			doty_sin = (doty_sin + 1) / 2 # range [0,1]
 			dotys_sin.append(doty_sin.astype(np.float16))
 
+			doty_cos = np.cos((doty-1)*(2.*np.pi/366))
+			doty_cos = (doty_cos + 1) / 2 # range [0,1]
+			dotys_cos.append(doty_cos.astype(np.float16))
+
+		dotys_sin_cos = np.concatenate((
+			np.expand_dims(np.asarray(dotys_sin), axis=-1),
+			np.expand_dims(np.asarray(dotys_cos), axis=-1)),
+			axis=-1			
+		)
+		print("dotys_sin_cos.shape", dotys_sin_cos.shape)
+
+		np.set_printoptions(suppress=True)
 		print(dotys)
-		print(dotys_sin)
-		return np.asarray(dotys), np.asarray(dotys_sin)
+		print(dotys_sin_cos)
+		np.set_printoptions(suppress=False)
+		return np.asarray(dotys), dotys_sin_cos
 		
 
 	def im_load(self,patch,im_names,label_names,add_id,conf):
@@ -364,12 +378,12 @@ class LEM(Dataset):
 			
 			# THE GOOD EXPERIMENT . 
 			#self.im_list=['20170612_S1', '20170706_S1']
-			#self.im_list=['20161015_S1','20161120_S1','20161214_S1','20170119_S1','20170212_S1','20170308_S1','20170413_S1','20170519_S1','20170612_S1', '20170706_S1']
-
+			self.im_list=['20161015_S1','20161120_S1','20161214_S1','20170119_S1','20170212_S1','20170308_S1','20170413_S1','20170519_S1','20170612_S1', '20170706_S1']
+			#'20160927_S1',
 			# THE NEXT EXPERIMENT
-			self.im_list=['20161015_S1','20161120_S1','20161214_S1','20170119_S1','20170212_S1','20170308_S1','20170413_S1','20170519_S1',
-				'20170612_S1', '20170706_S1', '20170811_S1', '20170916_S1', '20171010_S1', '20171115_S1', 
-				'20171209_S1', '20180114_S1', '20180219_S1', '20180315_S1', '20180420_S1', '20180514_S1']
+			#self.im_list=['20161015_S1','20161120_S1','20161214_S1','20170119_S1','20170212_S1','20170308_S1','20170413_S1','20170519_S1',
+			#	'20170612_S1', '20170706_S1', '20170811_S1', '20170916_S1', '20171010_S1', '20171115_S1', 
+			#	'20171209_S1', '20180114_S1', '20180219_S1', '20180315_S1', '20180420_S1', '20180514_S1']
 			
 			self.label_list=self.im_list.copy()
 

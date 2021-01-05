@@ -884,7 +884,7 @@ class Dataset(NetObject):
 class NetModel(NetObject):
 	def __init__(self, batch_size_train=32, batch_size_test=200, epochs=30000, 
 		patience=10, eval_mode='metrics', val_set=True,
-		model_type='DenseNet', time_measure=False, stop_epoch=0, dotys_sin=None, *args, **kwargs):
+		model_type='DenseNet', time_measure=False, stop_epoch=0, dotys_sin_cos=None, *args, **kwargs):
 
 		super().__init__(*args, **kwargs)
 		if self.debug >= 1:
@@ -919,9 +919,9 @@ class NetModel(NetObject):
 		deb.prints(self.mp)
 		self.stop_epoch=stop_epoch
 		deb.prints(self.stop_epoch)
-		self.dotys_sin = dotys_sin
-		self.dotys_sin = np.expand_dims(self.dotys_sin,axis=0)
-		self.dotys_sin = np.repeat(self.dotys_sin,self.batch['train']['size'],axis=0)
+		self.dotys_sin_cos = dotys_sin_cos
+		self.dotys_sin_cos = np.expand_dims(self.dotys_sin_cos,axis=0) # add batch dimension
+		self.dotys_sin_cos = np.repeat(self.dotys_sin_cos,self.batch['train']['size'],axis=0)
 	def transition_down(self, pipe, filters):
 		pipe = Conv2D(filters, (3, 3), strides=(2, 2), padding='same')(pipe)
 		pipe = keras.layers.BatchNormalization(axis=3)(pipe)
@@ -1761,7 +1761,7 @@ class NetModel(NetObject):
 			print(self.graph.summary())
 		if self.model_type=='UUnet4ConvLSTM_doty':
 			#self.t_len = 20
-			metadata_in = Input(shape=(self.t_len,))
+			metadata_in = Input(shape=(self.t_len,2))
 			
 			concat_axis = 3
 
@@ -1777,7 +1777,7 @@ class NetModel(NetObject):
 			e3 = TimeDistributed(AveragePooling2D((2, 2), strides=(2, 2)))(p3)
 			metadata=Lambda(lambda x: K.expand_dims(x, 2))(metadata_in)
 			metadata=Lambda(lambda x: K.expand_dims(x, 2))(metadata)
-			metadata=Lambda(lambda x: K.expand_dims(x, 2))(metadata)
+			#metadata=Lambda(lambda x: K.expand_dims(x, 2))(metadata)
 
 			deb.prints(K.int_shape(metadata))
 
@@ -1787,7 +1787,7 @@ class NetModel(NetObject):
 			deb.prints(K.int_shape(metadata))
 
 			x = keras.layers.concatenate([e3, metadata], axis = -1)
-			x = ConvLSTM2D(128,3,return_sequences=False,
+			x = ConvLSTM2D(256,3,return_sequences=False,
 					padding="same")(x)
 
 			d3 = transpose_layer(x,fs*4)
@@ -2594,7 +2594,7 @@ class NetModel(NetObject):
 			
 	def addDoty(self, input_):
 		if self.doty_flag==True:
-			input_ = [input_, self.dotys_sin]
+			input_ = [input_, self.dotys_sin_cos]
 		return input_	
 
 	def train_loop(self, data):
@@ -2958,7 +2958,7 @@ if __name__ == '__main__':
 	dataSource = SARSource()
 	ds.addDataSource(dataSource)
 	time_delta = ds.getTimeDelta(delta=True,format='days')
-	dotys, dotys_sin = ds.getDayOfTheYear()
+	dotys, dotys_sin_cos = ds.getDayOfTheYear()
 	#pdb.set_trace()
 
 
@@ -3006,7 +3006,7 @@ if __name__ == '__main__':
 					 batch_size_train=args.batch_size_train,batch_size_test=args.batch_size_test,
 					 patience=args.patience,t_len=ds.t_len,class_n=args.class_n,channel_n=args.channel_n,path=args.path,
 					 val_set=val_set,model_type=args.model_type, time_measure=time_measure, stop_epoch=args.stop_epoch,
-					 dotys_sin=dotys_sin)
+					 dotys_sin_cos=dotys_sin_cos)
 	model.class_n=data.class_n-1 # Model is designed without background class
 	deb.prints(data.class_n)
 	model.build()
