@@ -105,7 +105,7 @@ if args.patch_step_test==None:
 
 deb.prints(args.patch_step_test)
 
-#args.seq_mode = 'var'
+args.seq_mode = 'var'
 #========= overwrite for direct execution of this py file
 direct_execution=False
 if direct_execution==True:
@@ -267,8 +267,8 @@ class Dataset(NetObject):
 		elif args.seq_mode == 'var':
 
 			self.labeled_dates = 12
-			self.patches['train']['label'] = self.patches['train']['label'][-self.labeled_dates:]
-			self.patches['test']['label'] = self.patches['test']['label'][-self.labeled_dates:]
+			self.patches['train']['label'] = self.patches['train']['label'][:, -self.labeled_dates:]
+			self.patches['test']['label'] = self.patches['test']['label'][:, -self.labeled_dates:]
 
 		self.class_n=unique.shape[0] #10 plus background
 
@@ -2650,7 +2650,10 @@ class NetModel(NetObject):
 
 			data.patches['val']['label'] = data.patches['val']['label'][:, -1]
 			data.patches['test']['label'] = data.patches['test']['label'][:, -1]
+			deb.prints(data.patches['val']['label'].shape)
 
+			deb.prints(data.patches['test']['label'].shape)
+			#pdb.set_trace()
 		#==============================START TRAIN/TEST LOOP============================#
 		for epoch in range(self.epochs):
 
@@ -2694,11 +2697,18 @@ class NetModel(NetObject):
 						batch_seq_len = np.random.randint(min_seq_len,max_seq_len+1) # from 9 to 20 in the largest case
 
 					# example: -1-20+1:-1 = -20:-1
-					# example: -12-9+1:-1 = -20:-12
-					batch['train']['in'] = batch['train']['in'][:, label_date_id-batch_seq_len+1:label_date_id] 
-					deb.prints(batch['train']['in'].shape[1] == batch_seq_len)
-					deb.prints(batch_seq_len)
-					deb.prints(label_date_id)
+					# example: -12-9+1:-12 = -20:-12
+					# example: -3-11+1:-3 = -13:-3 
+					# example: -1-18+1:-1+1 = -18:0
+					if label_date_id+1!=0:
+						batch['train']['in'] = batch['train']['in'][:, label_date_id-batch_seq_len+1:label_date_id+1]
+					else:
+						batch['train']['in'] = batch['train']['in'][:, label_date_id-batch_seq_len+1:]
+
+					#deb.prints(batch['train']['in'].shape[1])
+					#deb.prints(batch['train']['in'].shape[1] == batch_seq_len)
+					#deb.prints(batch_seq_len)
+					#deb.prints(label_date_id)
 					assert batch['train']['in'].shape[1] == batch_seq_len
 
 					input_ = np.zeros(batch['train']['shape']).astype(np.float16)
@@ -2798,6 +2808,7 @@ class NetModel(NetObject):
 				
 				print("======== BEGINNING TEST PREDICT... ============")
 				data.patches['test']['prediction']=np.zeros_like(data.patches['test']['label'][...,:-1],dtype=prediction_dtype)#.astype(prediction_dtype)
+				deb.prints(data.patches['test']['prediction'].shape)
 				self.batch_test_stats=False
 
 				for batch_id in range(0, self.batch['test']['n']):
@@ -2820,6 +2831,12 @@ class NetModel(NetObject):
 					data.patches['test']['prediction'][idx0:idx1]=(self.graph.predict(
 						input_,
 						batch_size=self.batch['test']['size'])).astype(prediction_dtype) #*13
+
+				if self.batch_test_stats==True:
+					# Average epoch loss
+					self.metrics['test']['loss'] /= self.batch['test']['n']
+				# Get test metrics
+				metrics=data.metrics_get(data.patches['test']['prediction'],data.patches['test']['label'],debug=1)
 			#====================METRICS GET================================================#
 			deb.prints(data.patches['test']['label'].shape)	
 			deb.prints(data.patches['test']['prediction'].dtype)
@@ -2830,11 +2847,6 @@ class NetModel(NetObject):
 			deb.prints(idx1)
 			print("Epoch={}".format(epoch))	
 			
-			if self.batch_test_stats==True:
-				# Average epoch loss
-				self.metrics['test']['loss'] /= self.batch['test']['n']
-			# Get test metrics
-			metrics=data.metrics_get(data.patches['test']['prediction'],data.patches['test']['label'],debug=1)
 			if test_loop_each_epoch==True:
 				print("Test metrics are printed each epoch. Metrics:",epoch,metrics)
 			
@@ -2862,11 +2874,6 @@ class NetModel(NetObject):
 			#	txt['test']['epoch']=[]
 				#self.graph.save('my_model.h5')
 
-			else:
-
-				txt['test']['metrics'].append(metrics)
-				txt['test']['loss'].append(self.metrics['test']['loss'])
-				txt['test']['epoch'].append(epoch)
 
 			#data.metrics_write_to_txt(metrics,np.squeeze(self.metrics['test']['loss']),
 			#	epoch,path=self.report['best']['text_history_path'])
@@ -2877,12 +2884,12 @@ class NetModel(NetObject):
 
 			##deb.prints(metrics['confusion_matrix'])
 			#metrics['average_acc'],metrics['per_class_acc']=self.average_acc(data['prediction_h'],data['label_h'])
-			deb.prints(metrics['per_class_acc'])
+			##deb.prints(metrics['per_class_acc'])
 			if self.val_set:
 				deb.prints(metrics_val['per_class_acc'])
 			
-			print('oa={}, aa={}, f1={}, f1_wght={}'.format(metrics['overall_acc'],
-				metrics['average_acc'],metrics['f1_score'],metrics['f1_score_weighted']))
+			#print('oa={}, aa={}, f1={}, f1_wght={}'.format(metrics['overall_acc'],
+			#	metrics['average_acc'],metrics['f1_score'],metrics['f1_score_weighted']))
 			if self.val_set:
 				print('val oa={}, aa={}, f1={}, f1_wght={}'.format(metrics_val['overall_acc'],
 					metrics_val['average_acc'],metrics_val['f1_score'],metrics_val['f1_score_weighted']))
@@ -3023,7 +3030,7 @@ if __name__ == '__main__':
 			
 		print("=== AUGMENTING TRAINING DATA")
 
-		balancing=True
+		balancing=False
 		if balancing==True:
 			if args.seq_mode=='fixed':
 				label_type = 'Nto1'
@@ -3063,7 +3070,7 @@ if __name__ == '__main__':
 		deb.prints(data.patches['val']['label'].shape)
 		model.loss_weights=np.load(data.path_patches_bckndfixed+'loss_weights.npy')
 
-	store_patches=True
+	store_patches=False
 	store_patches_each_sample=False
 	if store_patches==True and store_patches_each_sample==True:
 		patchesStorageEachSample = PatchesStorageEachSample(data.path['v'])
