@@ -60,9 +60,9 @@ def labels_predictions_filter_transform(label_test,predictions,class_n,
 			v = np.expand_dims(v, axis=0)
 			predictions[i] = dense_crf(v,img=img_in,n_iters=10,sxy_gaussian=(3, 3), compat_gaussian=3,n_classes=class_n)
 
-	predictions=predictions.argmax(axis=np.ndim(predictions)-1)
+	predictions=predictions.argmax(axis=-1)
 	predictions=np.reshape(predictions,-1)
-	label_test=label_test.argmax(axis=np.ndim(label_test)-1)
+	label_test=label_test.argmax(axis=-1)
 	label_test=np.reshape(label_test,-1)
 	predictions=predictions[label_test<class_n]
 	label_test=label_test[label_test<class_n]
@@ -230,7 +230,8 @@ def experiment_analyze(small_classes_ignore,dataset='cv',
 	
 	#pdb.set_trace()
 	class_n=predictions.shape[-1]
-
+	mode='each_date'
+	skip_crf=True
 	if mode=='each_date':
 		metrics_t={'f1_score':[],'overall_acc':[],
 			'average_acc':[]}
@@ -242,24 +243,26 @@ def experiment_analyze(small_classes_ignore,dataset='cv',
 		# 			date_important_classes=[0,6,8]
 
 
-		skip_crf=True
-		for t in range(label_test.shape[1]):
-			predictions_t = predictions[:,t,:,:,:]
-			label_test_t = label_test[:,t,:,:,:]
-			#skip_crf = model_n<2 #prediction_filename.startswith('model_best_BUnet4ConvLSTM_128fl_')
-			print("###skip_crf###")
-			print(skip_crf)
-			print(prediction_filename)
+		
 
-			label_test_t,predictions_t = labels_predictions_filter_transform(
-				label_test_t, predictions_t, class_n=class_n,
-				debug=debug,small_classes_ignore=small_classes_ignore,
-				important_classes=None, dataset=dataset, skip_crf=skip_crf, t=t)
-			metrics = metrics_get(label_test_t, predictions_t,
-				only_basics=True, debug=debug, detailed_t = t)	
-			metrics_t['f1_score'].append(metrics['f1_score'])
-			metrics_t['overall_acc'].append(metrics['overall_acc'])
-			metrics_t['average_acc'].append(metrics['average_acc'])
+		predictions_t = predictions.copy()
+		label_test_t = label_test.copy()
+		#skip_crf = model_n<2 #prediction_filename.startswith('model_best_BUnet4ConvLSTM_128fl_')
+		print("###skip_crf###")
+		print(skip_crf)
+		print(prediction_filename)
+
+		label_test_t,predictions_t = labels_predictions_filter_transform(
+			label_test_t, predictions_t, class_n=class_n,
+			debug=debug,small_classes_ignore=small_classes_ignore,
+			important_classes=None, dataset=dataset, skip_crf=skip_crf, t=0)
+		metrics = metrics_get(label_test_t, predictions_t,
+			only_basics=True, debug=debug, detailed_t = 0)	
+		print(metrics)
+		pdb.set_trace()
+		metrics_t['f1_score'].append(metrics['f1_score'])
+		metrics_t['overall_acc'].append(metrics['overall_acc'])
+		metrics_t['average_acc'].append(metrics['average_acc'])
 
 		print(metrics_t)
 		#pdb.set_trace()
@@ -829,11 +832,9 @@ elif dataset=='lm':
 				
 			]		
 			#'''
-		experiment_groups=[[
-			'model_best_var_may18_ext_f1es_pt100.h5']
-			
-		]	
-
+		experiment_groups=[['model_best_var_may18_ext_f1es_pt100.h5']]	
+		experiment_groups=[['model_best_UUnet4ConvLSTM_doty_var_may18_ext_f1es_rep1.h5']]	
+		experiment_groups=[['model_best_UUnet4ConvLSTM_var_may18_ext_f1es_rep1.h5']]	
 elif dataset=='lm_optical':
 	exp_id=1
 	experiment_groups=[[

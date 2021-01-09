@@ -2667,7 +2667,7 @@ class NetModel(NetObject):
 
 			# Random shuffle the data
 			##data.patches['train']['in'], data.patches['train']['label'] = shuffle(data.patches['train']['in'], data.patches['train']['label'])
-
+			label_date_id = -data.labeled_dates
 			#=============================TRAIN LOOP=========================================#
 			for batch_id in range(0, self.batch['train']['n']):
 				
@@ -2684,8 +2684,9 @@ class NetModel(NetObject):
 				
 				# set label N to 1
 				if args.seq_mode=='var':
+
 					# self.t_len is 20 as an example 
-					label_date_id = np.random.randint(-data.labeled_dates,0) # labels can be from -1 to -12
+					##label_date_id = np.random.randint(-data.labeled_dates,0) # labels can be from -1 to -12
 					# example: last t_step can use entire sequence: 20 + (-1+1) = 20
 					# example: first t_step can use sequence: 20 + (-12+1) = 9
 					# to do: add sep17 image 
@@ -2700,6 +2701,9 @@ class NetModel(NetObject):
 					# example: -12-9+1:-12 = -20:-12
 					# example: -3-11+1:-3 = -13:-3 
 					# example: -1-18+1:-1+1 = -18:0
+					##print("Batch slice",label_date_id-batch_seq_len+1,label_date_id+1)
+					##deb.prints(label_date_id+1!=0)
+					##deb.prints(label_date_id)
 					if label_date_id+1!=0:
 						batch['train']['in'] = batch['train']['in'][:, label_date_id-batch_seq_len+1:label_date_id+1]
 					else:
@@ -2729,6 +2733,11 @@ class NetModel(NetObject):
 					batch_time=time.time()-start_time
 					print(batch_time)
 					sys.exit('Batch time:')
+				if args.seq_mode=='var':
+					if label_date_id < -1: # if -12 to -2, increase 1
+						label_date_id = label_date_id + 1
+					else: # if -1,
+						label_date_id = -data.labeled_dates
 			# Average epoch loss
 			self.metrics['train']['loss'] /= self.batch['train']['n']
 
@@ -2974,7 +2983,7 @@ if __name__ == '__main__':
 		path=args.path, t_len=ds.t_len, class_n=args.class_n, channel_n = args.channel_n)
 	#t_len=args.t_len
 
-	args.patience=10
+	args.patience=100
 
 	val_set=True
 	#val_set_mode='stratified'
@@ -3030,7 +3039,7 @@ if __name__ == '__main__':
 			
 		print("=== AUGMENTING TRAINING DATA")
 
-		balancing=False
+		balancing=True
 		if balancing==True:
 			if args.seq_mode=='fixed':
 				label_type = 'Nto1'

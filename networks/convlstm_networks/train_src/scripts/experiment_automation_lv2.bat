@@ -13,14 +13,14 @@ set dataset=lm
 ::::dataSource='OpticalWithClouds'
 ::dataSource='SAR'
 set dataSource=SAR
-set model=UUnet4ConvLSTM
+set model=UUnet4ConvLSTM_doty
 :: set model=UUnet4ConvLSTM
 
 :: ==== EXTRACT PATCHES
-:: set id=var_may18_ext_f1es
-set id=fixed_width_may18_ext_f1es_no13
+set id=var_may18_ext_f1es_pt100
+:: set id=fixed_width_sep17_may18_ext_f1es_no13
 
-call patches_extract.bat %dataset% %dataSource%
+:: call patches_extract.bat %dataset% %dataSource%
 :: set id=less_jun18_1
 call experiment_automation.bat %id% %model% %dataset% %dataSource%
 

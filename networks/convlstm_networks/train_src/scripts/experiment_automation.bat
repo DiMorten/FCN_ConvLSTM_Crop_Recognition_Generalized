@@ -39,7 +39,7 @@ echo %channel_n%
 
 
 
-set stop_epoch=-1 
+set stop_epoch=400 
 :: promote to lv2?
 
 :: ::id="blockgoer"
