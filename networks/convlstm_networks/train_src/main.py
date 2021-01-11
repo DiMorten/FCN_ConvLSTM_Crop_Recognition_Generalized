@@ -105,7 +105,7 @@ if args.patch_step_test==None:
 
 deb.prints(args.patch_step_test)
 
-args.seq_mode = 'var'
+args.seq_mode = 'var_label'
 #========= overwrite for direct execution of this py file
 direct_execution=False
 if direct_execution==True:
@@ -267,6 +267,12 @@ class Dataset(NetObject):
 		elif args.seq_mode == 'var':
 
 			self.labeled_dates = 12
+
+			self.patches['train']['label'] = self.patches['train']['label'][:, -self.labeled_dates:]
+			self.patches['test']['label'] = self.patches['test']['label'][:, -self.labeled_dates:]
+		elif args.seq_mode == 'var_label':
+			self.labeled_dates = 11
+
 			self.patches['train']['label'] = self.patches['train']['label'][:, -self.labeled_dates:]
 			self.patches['test']['label'] = self.patches['test']['label'][:, -self.labeled_dates:]
 
@@ -560,6 +566,7 @@ class Dataset(NetObject):
 		metrics={}
 		metrics['f1_score']=f1_score(label,prediction,average='macro')
 		metrics['f1_score_weighted']=f1_score(label,prediction,average='weighted')
+		metrics['f1_score_noavg']=f1_score(label,prediction,average=None)
 		metrics['overall_acc']=accuracy_score(label,prediction)
 		metrics['confusion_matrix']=confusion_matrix(label,prediction)
 		#print(confusion_matrix_)
@@ -922,6 +929,7 @@ class NetModel(NetObject):
 		self.dotys_sin_cos = dotys_sin_cos
 		self.dotys_sin_cos = np.expand_dims(self.dotys_sin_cos,axis=0) # add batch dimension
 		self.dotys_sin_cos = np.repeat(self.dotys_sin_cos,self.batch['train']['size'],axis=0)
+		self.model_t_len = 12
 	def transition_down(self, pipe, filters):
 		pipe = Conv2D(filters, (3, 3), strides=(2, 2), padding='same')(pipe)
 		pipe = keras.layers.BatchNormalization(axis=3)(pipe)
@@ -1035,7 +1043,9 @@ class NetModel(NetObject):
 
 	def build(self):
 		deb.prints(self.t_len)
-		in_im = Input(shape=(self.t_len,self.patch_len, self.patch_len, self.channel_n))
+		deb.prints(self.model_t_len)
+
+		in_im = Input(shape=(self.model_t_len,self.patch_len, self.patch_len, self.channel_n))
 		weight_decay=1E-4
 		def dilated_layer(x,filter_size,dilation_rate=1, kernel_size=3):
 			x = TimeDistributed(Conv2D(filter_size, kernel_size, padding='same',
@@ -1761,7 +1771,7 @@ class NetModel(NetObject):
 			print(self.graph.summary())
 		if self.model_type=='UUnet4ConvLSTM_doty':
 			#self.t_len = 20
-			metadata_in = Input(shape=(self.t_len,2))
+			metadata_in = Input(shape=(self.model_t_len,2))
 			
 			concat_axis = 3
 
@@ -2592,9 +2602,11 @@ class NetModel(NetObject):
 			#else:
 				#self.early_stop["signal"]=False
 			
-	def addDoty(self, input_):
+	def addDoty(self, input_, bounds=None):
 		if self.doty_flag==True:
-			input_ = [input_, self.dotys_sin_cos]
+			if bounds!=None:
+				dotys_sin_cos = self.dotys_sin_cos[:,bounds[0]:bounds[1] if bounds[1]!=0 else None]
+			input_ = [input_, dotys_sin_cos]
 		return input_	
 
 	def train_loop(self, data):
@@ -2640,7 +2652,7 @@ class NetModel(NetObject):
 		#for epoch in [0,1]:
 		init_time=time.time()
 
-		if args.seq_mode=='var':
+		if args.seq_mode=='var' or args.seq_mode=='var_label':
 			batch['train']['shape'] = (self.batch['train']['size'], self.t_len) + data.patches['train']['in'].shape[2:]
 			deb.prints(batch['train']['shape'])
 			#data.labeled_dates = 12
@@ -2717,14 +2729,30 @@ class NetModel(NetObject):
 
 					input_ = np.zeros(batch['train']['shape']).astype(np.float16)
 					input_[:, -batch_seq_len:] = batch['train']['in']
+					input_ = self.addDoty(input_)
+
+				elif args.seq_mode=='var_label':
+					batch_seq_len = 12
+					#print("Label, seq start, seq end",label_date_id,label_date_id-batch_seq_len+1,label_date_id+1)
+					if label_date_id+1!=0:
+
+						input_ = batch['train']['in'][:, label_date_id-batch_seq_len+1:label_date_id+1]
+					else:
+						input_ = batch['train']['in'][:, label_date_id-batch_seq_len+1:]
+						#print("exception", input_.shape)
+					input_ = input_.astype(np.float16)
+					input_ = self.addDoty(input_, 
+								bounds = [label_date_id-batch_seq_len+1, label_date_id+1])
+
 				else:
 					input_ = batch['train']['in'].astype(np.float16)
+					input_ = self.addDoty(input_)
+
 				gt = np.expand_dims(batch['train']['label'].argmax(axis=-1),axis=-1).astype(np.int8)
-				if args.seq_mode=='var':
+				if args.seq_mode=='var' or args.seq_mode=='var_label':
 					gt = gt[:, label_date_id] # N to 1 label is selected
 
 
-				input_ = self.addDoty(input_)
 
 				self.metrics['train']['loss'] += self.graph.train_on_batch(
 					input_, 
@@ -2733,7 +2761,7 @@ class NetModel(NetObject):
 					batch_time=time.time()-start_time
 					print(batch_time)
 					sys.exit('Batch time:')
-				if args.seq_mode=='var':
+				if args.seq_mode=='var' or args.seq_mode=='var_label':
 					if label_date_id < -1: # if -12 to -2, increase 1
 						label_date_id = label_date_id + 1
 					else: # if -1,
@@ -2760,15 +2788,22 @@ class NetModel(NetObject):
 					batch['val']['label'] = data.patches['val']['label'][idx0:idx1]
 
 					if self.batch_test_stats:
-						input_ = batch['val']['in'].astype(np.float16)
-						input_ = self.addDoty(input_)
-
+						
+						if args.seq_mode == 'var_label':
+							input_ = batch['val']['in'][:,-12:].astype(np.float16)
+							input_ = self.addDoty(input_, bounds=[-12, None])
+						else:
+							input_ = batch['val']['in'].astype(np.float16)
+							input_ = self.addDoty(input_)
 						self.metrics['val']['loss'] += self.graph.test_on_batch(
 							input_,
 							np.expand_dims(batch['val']['label'].argmax(axis=-1),axis=-1).astype(np.int8))		# Accumulated epoch
 
-					input_ = batch['val']['in'].astype(np.float16)
-					input_ = self.addDoty(input_)
+					input_ = batch['val']['in'][:,-12:].astype(np.float16)
+					if args.seq_mode == 'var_label':
+						input_ = self.addDoty(input_, bounds=[-12, None])
+					else:
+						input_ = self.addDoty(input_)
 					data.patches['val']['prediction'][idx0:idx1]=(self.graph.predict(
 						input_,
 						batch_size=self.batch['val']['size'])).astype(prediction_dtype) #*13
@@ -2828,15 +2863,21 @@ class NetModel(NetObject):
 					batch['test']['label'] = data.patches['test']['label'][idx0:idx1]
 
 					if self.batch_test_stats:
-						input_ = batch['test']['in'].astype(np.float16)
-						input_ = self.addDoty(input_)
+						input_ = batch['test']['in'][:,-12:].astype(np.float16)
+						if args.seq_mode == 'var_label':
+							input_ = self.addDoty(input_, bounds=[-12, None])
+						else:
+							input_ = self.addDoty(input_)
 						self.metrics['test']['loss'] += self.graph.test_on_batch(
 							input_,
 							np.expand_dims(batch['test']['label'].argmax(axis=-1),axis=-1).astype(np.int16))		# Accumulated epoch
 
 
-					input_ = batch['test']['in'].astype(np.float16)
-					input_ = self.addDoty(input_)
+					input_ = batch['test']['in'][:,-12:].astype(np.float16)
+					if args.seq_mode == 'var_label':
+						input_ = self.addDoty(input_, bounds=[-12, None])
+					else:
+						input_ = self.addDoty(input_)
 					data.patches['test']['prediction'][idx0:idx1]=(self.graph.predict(
 						input_,
 						batch_size=self.batch['test']['size'])).astype(prediction_dtype) #*13
@@ -3043,7 +3084,7 @@ if __name__ == '__main__':
 		if balancing==True:
 			if args.seq_mode=='fixed':
 				label_type = 'Nto1'
-			elif args.seq_mode=='var':	
+			elif args.seq_mode=='var' or args.seq_mode=='var_label':	
 				label_type = 'NtoN'
 			deb.prints(label_type)
 			data.semantic_balance(500,label_type = label_type) #More for seq2seq
@@ -3079,7 +3120,7 @@ if __name__ == '__main__':
 		deb.prints(data.patches['val']['label'].shape)
 		model.loss_weights=np.load(data.path_patches_bckndfixed+'loss_weights.npy')
 
-	store_patches=False
+	store_patches=True
 	store_patches_each_sample=False
 	if store_patches==True and store_patches_each_sample==True:
 		patchesStorageEachSample = PatchesStorageEachSample(data.path['v'])

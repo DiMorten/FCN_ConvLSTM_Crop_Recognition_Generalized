@@ -17,7 +17,7 @@ set model=UUnet4ConvLSTM_doty
 :: set model=UUnet4ConvLSTM
 
 :: ==== EXTRACT PATCHES
-set id=var_may18_ext_f1es_pt100
+set id=var_label
 :: set id=fixed_width_sep17_may18_ext_f1es_no13
 
 :: call patches_extract.bat %dataset% %dataSource%
