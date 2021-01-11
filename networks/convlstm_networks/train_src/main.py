@@ -50,7 +50,7 @@ from datagenerator import DataGenerator
 
 sys.path.append('../../../dataset/dataset/patches_extract_script/')
 from dataSource import DataSource, SARSource, OpticalSource, Dataset, LEM, CampoVerde, OpticalSourceWithClouds, Humidity
-
+from model_input_mode import MIMFixed, MIMVarLabel, MIMVarSeqLabel, MIMVarLabel_PaddedSeq
 
 parser = argparse.ArgumentParser(description='')
 parser.add_argument('-tl', '--t_len', dest='t_len',
@@ -106,6 +106,16 @@ if args.patch_step_test==None:
 deb.prints(args.patch_step_test)
 
 args.seq_mode = 'var_label'
+if args.seq_mode == 'var_label':
+	#args.mim = MIMVarLabel()
+	args.mim = MIMVarLabel_PaddedSeq()
+elif args.seq_mode == 'var':
+	args.mim = MIMVarSeqLabel()
+else:
+	args.mim = MIMFixed()
+deb.prints(args.seq_mode)
+deb.prints(args.mim)
+
 #========= overwrite for direct execution of this py file
 direct_execution=False
 if direct_execution==True:
@@ -171,7 +181,7 @@ def sizeof_fmt(num, suffix='B'):
 class NetObject(object):
 
 	def __init__(self, patch_len=32, patch_step_train=32,patch_step_test=32, path="../data/", im_name_train="Image_Train.tif", im_name_test="Image_Test.tif", label_name_train="Reference_Train.tif", label_name_test="Reference_Test.tif", channel_n=2, debug=1,exp_id="skip_connections",
-		t_len=7,class_n=11):
+		t_len=7,class_n=11, dotys_sin_cos=None):
 		print("Initializing object...")
 		print(t_len, channel_n)
 		self.patch_len = patch_len
@@ -208,6 +218,9 @@ class NetObject(object):
 		
 		self.t_len=t_len
 		deb.prints(self.t_len)
+		self.dotys_sin_cos = dotys_sin_cos
+		self.dotys_sin_cos = np.expand_dims(self.dotys_sin_cos,axis=0) # add batch dimension
+		self.dotys_sin_cos = np.repeat(self.dotys_sin_cos,16,axis=0)
 # ================= Dataset class implements data loading, patch extraction, metric calculation and image reconstruction =======#
 class Dataset(NetObject):
 
@@ -220,7 +233,6 @@ class Dataset(NetObject):
 									[4,[255,255,255],255]]
 		if self.debug >= 1:
 			print("Initializing Dataset instance")
-
 	def create(self):
 		self.image["train"], self.patches["train"] = self.subset_create(
 			self.path['train'],self.patches["train"]['step'])
@@ -271,7 +283,8 @@ class Dataset(NetObject):
 			self.patches['train']['label'] = self.patches['train']['label'][:, -self.labeled_dates:]
 			self.patches['test']['label'] = self.patches['test']['label'][:, -self.labeled_dates:]
 		elif args.seq_mode == 'var_label':
-			self.labeled_dates = 11
+#			self.labeled_dates = 11
+			self.labeled_dates = 12
 
 			self.patches['train']['label'] = self.patches['train']['label'][:, -self.labeled_dates:]
 			self.patches['test']['label'] = self.patches['test']['label'][:, -self.labeled_dates:]
@@ -454,6 +467,23 @@ class Dataset(NetObject):
 		deb.prints(out.shape)
 		out = np.reshape(out, (out.shape[0] * out.shape[1],) + out.shape[2::])
 		return out,partitioned_shape
+# ==== add doty
+
+	def addDoty(self, input_, bounds=None):
+		if self.doty_flag==True:
+			if bounds!=None:
+				dotys_sin_cos = self.dotys_sin_cos[:,bounds[0]:bounds[1] if bounds[1]!=0 else None]
+			input_ = [input_, dotys_sin_cos]
+		return input_	
+	def addDotyPadded(self, input_, bounds=None, seq_len=12):
+		if self.doty_flag==True:
+			if bounds!=None:
+				dotys_sin_cos = self.dotys_sin_cos[:,bounds[0]:bounds[1] if bounds[1]!=0 else None]
+			dotys_sin_cos_padded = np.zeros((16, seq_len, 2))
+			dotys_sin_cos_padded[:, -dotys_sin_cos.shape[1]:] = dotys_sin_cos
+			input_ = [input_, dotys_sin_cos_padded]
+		return input_	
+
 
 #=============== PATCHES STORE ==========================#
 
@@ -528,7 +558,17 @@ class Dataset(NetObject):
 		out=label[label!=label_shape[-1]-1,:] # label whose value is the last (bcknd)
 		out=np.reshape(out,((out.shape[0],)+label_shape[1:]))
 		return out
+	def my_f1_score(self,label,prediction):
+		f1_values=f1_score(label,prediction,average=None)
 
+		#label_unique=np.unique(label) # [0 1 2 3 5]
+		#prediction_unique=np.unique(prediction.argmax(axis-1)) # [0 1 2 3 4]
+		#[ 0.8 0.8 0.8 0 0.7 0.7]
+
+		f1_value=np.sum(f1_values)/len(np.unique(label))
+
+		#print("f1_values",f1_values," f1_value:",f1_value)
+		return f1_value
 	def metrics_get(self,prediction, label,ignore_bcknd=True,debug=2): #requires batch['prediction'],batch['label']
 		print("======================= METRICS GET")
 		class_n=prediction.shape[-1]
@@ -564,7 +604,8 @@ class Dataset(NetObject):
 		#========================METRICS GET================================================#
 
 		metrics={}
-		metrics['f1_score']=f1_score(label,prediction,average='macro')
+#		metrics['f1_score']=f1_score(label,prediction,average='macro')
+		metrics['f1_score'] = self.my_f1_score(label,prediction)
 		metrics['f1_score_weighted']=f1_score(label,prediction,average='weighted')
 		metrics['f1_score_noavg']=f1_score(label,prediction,average=None)
 		metrics['overall_acc']=accuracy_score(label,prediction)
@@ -891,7 +932,8 @@ class Dataset(NetObject):
 class NetModel(NetObject):
 	def __init__(self, batch_size_train=32, batch_size_test=200, epochs=30000, 
 		patience=10, eval_mode='metrics', val_set=True,
-		model_type='DenseNet', time_measure=False, stop_epoch=0, dotys_sin_cos=None, *args, **kwargs):
+		model_type='DenseNet', time_measure=False, stop_epoch=0, dotys_sin_cos=None, mim=MIMFixed(), 
+		*args, **kwargs):
 
 		super().__init__(*args, **kwargs)
 		if self.debug >= 1:
@@ -926,10 +968,9 @@ class NetModel(NetObject):
 		deb.prints(self.mp)
 		self.stop_epoch=stop_epoch
 		deb.prints(self.stop_epoch)
-		self.dotys_sin_cos = dotys_sin_cos
-		self.dotys_sin_cos = np.expand_dims(self.dotys_sin_cos,axis=0) # add batch dimension
-		self.dotys_sin_cos = np.repeat(self.dotys_sin_cos,self.batch['train']['size'],axis=0)
+
 		self.model_t_len = 12
+		self.mim = mim
 	def transition_down(self, pipe, filters):
 		pipe = Conv2D(filters, (3, 3), strides=(2, 2), padding='same')(pipe)
 		pipe = keras.layers.BatchNormalization(axis=3)(pipe)
@@ -2602,12 +2643,7 @@ class NetModel(NetObject):
 			#else:
 				#self.early_stop["signal"]=False
 			
-	def addDoty(self, input_, bounds=None):
-		if self.doty_flag==True:
-			if bounds!=None:
-				dotys_sin_cos = self.dotys_sin_cos[:,bounds[0]:bounds[1] if bounds[1]!=0 else None]
-			input_ = [input_, dotys_sin_cos]
-		return input_	
+
 
 	def train_loop(self, data):
 		print('Start the training')
@@ -2640,6 +2676,10 @@ class NetModel(NetObject):
 		self.batch['train']['n'] = data.patches['train']['in'].shape[0] // self.batch['train']['size']
 		self.batch['test']['n'] = data.patches['test']['in'].shape[0] // self.batch['test']['size']
 		self.batch['val']['n'] = data.patches['val']['in'].shape[0] // self.batch['val']['size']
+
+		batch['train']['size'] = self.batch['train']['size']
+		batch['test']['size'] = self.batch['test']['size']
+		batch['val']['size'] = self.batch['val']['size']
 	
 		data.patches['test']['prediction']=np.zeros_like(data.patches['test']['label'][...,:-1], dtype=prediction_dtype)
 		deb.prints(data.patches['test']['label'].shape)
@@ -2652,20 +2692,10 @@ class NetModel(NetObject):
 		#for epoch in [0,1]:
 		init_time=time.time()
 
-		if args.seq_mode=='var' or args.seq_mode=='var_label':
-			batch['train']['shape'] = (self.batch['train']['size'], self.t_len) + data.patches['train']['in'].shape[2:]
-			deb.prints(batch['train']['shape'])
-			#data.labeled_dates = 12
-			deb.prints(data.labeled_dates)
-			min_seq_len = self.t_len - data.labeled_dates + 1 # 20 - 12 + 1 = 9
-			deb.prints(min_seq_len)
 
-			data.patches['val']['label'] = data.patches['val']['label'][:, -1]
-			data.patches['test']['label'] = data.patches['test']['label'][:, -1]
-			deb.prints(data.patches['val']['label'].shape)
+		batch, data, min_seq_len = self.mim.trainingInit(batch, data, self.t_len, model_t_len=12)
 
-			deb.prints(data.patches['test']['label'].shape)
-			#pdb.set_trace()
+		data.doty_flag=True
 		#==============================START TRAIN/TEST LOOP============================#
 		for epoch in range(self.epochs):
 
@@ -2695,65 +2725,17 @@ class NetModel(NetObject):
 				
 				
 				# set label N to 1
-				if args.seq_mode=='var':
-
-					# self.t_len is 20 as an example 
-					##label_date_id = np.random.randint(-data.labeled_dates,0) # labels can be from -1 to -12
-					# example: last t_step can use entire sequence: 20 + (-1+1) = 20
-					# example: first t_step can use sequence: 20 + (-12+1) = 9
-					# to do: add sep17 image 
-					max_seq_len = self.t_len + (label_date_id+1) # from 9 to 20
-					
-					if min_seq_len == max_seq_len:
-						batch_seq_len = min_seq_len
-					else:
-						batch_seq_len = np.random.randint(min_seq_len,max_seq_len+1) # from 9 to 20 in the largest case
-
-					# example: -1-20+1:-1 = -20:-1
-					# example: -12-9+1:-12 = -20:-12
-					# example: -3-11+1:-3 = -13:-3 
-					# example: -1-18+1:-1+1 = -18:0
-					##print("Batch slice",label_date_id-batch_seq_len+1,label_date_id+1)
-					##deb.prints(label_date_id+1!=0)
-					##deb.prints(label_date_id)
-					if label_date_id+1!=0:
-						batch['train']['in'] = batch['train']['in'][:, label_date_id-batch_seq_len+1:label_date_id+1]
-					else:
-						batch['train']['in'] = batch['train']['in'][:, label_date_id-batch_seq_len+1:]
-
-					#deb.prints(batch['train']['in'].shape[1])
-					#deb.prints(batch['train']['in'].shape[1] == batch_seq_len)
-					#deb.prints(batch_seq_len)
-					#deb.prints(label_date_id)
-					assert batch['train']['in'].shape[1] == batch_seq_len
-
-					input_ = np.zeros(batch['train']['shape']).astype(np.float16)
-					input_[:, -batch_seq_len:] = batch['train']['in']
-					input_ = self.addDoty(input_)
-
-				elif args.seq_mode=='var_label':
-					batch_seq_len = 12
-					#print("Label, seq start, seq end",label_date_id,label_date_id-batch_seq_len+1,label_date_id+1)
-					if label_date_id+1!=0:
-
-						input_ = batch['train']['in'][:, label_date_id-batch_seq_len+1:label_date_id+1]
-					else:
-						input_ = batch['train']['in'][:, label_date_id-batch_seq_len+1:]
-						#print("exception", input_.shape)
-					input_ = input_.astype(np.float16)
-					input_ = self.addDoty(input_, 
-								bounds = [label_date_id-batch_seq_len+1, label_date_id+1])
-
-				else:
-					input_ = batch['train']['in'].astype(np.float16)
-					input_ = self.addDoty(input_)
+				#if args.seq_mode=='var' or args.seq_mode=='var_label':
+				batch_seq_len = 12
+				#deb.prints(self.mim)
+				input_, batch_seq_len = self.mim.batchTrainPreprocess(batch, data, 
+								label_date_id, batch_seq_len, self.t_len)
 
 				gt = np.expand_dims(batch['train']['label'].argmax(axis=-1),axis=-1).astype(np.int8)
 				if args.seq_mode=='var' or args.seq_mode=='var_label':
 					gt = gt[:, label_date_id] # N to 1 label is selected
-
-
-
+				#print("Debugging len(input_), input_, input_[0].shape, input_[1].shape",
+				#		len(input_), input_, input_[0].shape, input_[1].shape)
 				self.metrics['train']['loss'] += self.graph.train_on_batch(
 					input_, 
 					gt)		# Accumulated epoch
@@ -2787,23 +2769,14 @@ class NetModel(NetObject):
 					batch['val']['in'] = data.patches['val']['in'][idx0:idx1]
 					batch['val']['label'] = data.patches['val']['label'][idx0:idx1]
 
+					input_ = self.mim.batchMetricSplitPreprocess(batch, data, split='val')
+
 					if self.batch_test_stats:
 						
-						if args.seq_mode == 'var_label':
-							input_ = batch['val']['in'][:,-12:].astype(np.float16)
-							input_ = self.addDoty(input_, bounds=[-12, None])
-						else:
-							input_ = batch['val']['in'].astype(np.float16)
-							input_ = self.addDoty(input_)
 						self.metrics['val']['loss'] += self.graph.test_on_batch(
 							input_,
 							np.expand_dims(batch['val']['label'].argmax(axis=-1),axis=-1).astype(np.int8))		# Accumulated epoch
 
-					input_ = batch['val']['in'][:,-12:].astype(np.float16)
-					if args.seq_mode == 'var_label':
-						input_ = self.addDoty(input_, bounds=[-12, None])
-					else:
-						input_ = self.addDoty(input_)
 					data.patches['val']['prediction'][idx0:idx1]=(self.graph.predict(
 						input_,
 						batch_size=self.batch['val']['size'])).astype(prediction_dtype) #*13
@@ -2821,7 +2794,7 @@ class NetModel(NetObject):
 
 				metrics_val['per_class_acc'].setflags(write=1)
 				metrics_val['per_class_acc'][np.isnan(metrics_val['per_class_acc'])]=-1
-				print(metrics_val['per_class_acc'])
+				print(metrics_val['f1_score_noavg'])
 				
 				# if epoch % 5 == 0:
 				# 	print("Writing val...")
@@ -2936,7 +2909,7 @@ class NetModel(NetObject):
 			#metrics['average_acc'],metrics['per_class_acc']=self.average_acc(data['prediction_h'],data['label_h'])
 			##deb.prints(metrics['per_class_acc'])
 			if self.val_set:
-				deb.prints(metrics_val['per_class_acc'])
+				deb.prints(metrics_val['f1_score_noavg'])
 			
 			#print('oa={}, aa={}, f1={}, f1_wght={}'.format(metrics['overall_acc'],
 			#	metrics['average_acc'],metrics['f1_score'],metrics['f1_score_weighted']))
@@ -3021,10 +2994,11 @@ if __name__ == '__main__':
 
 	data = Dataset(patch_len=args.patch_len, patch_step_train=args.patch_step_train,
 		patch_step_test=args.patch_step_test,exp_id=args.exp_id,
-		path=args.path, t_len=ds.t_len, class_n=args.class_n, channel_n = args.channel_n)
+		path=args.path, t_len=ds.t_len, class_n=args.class_n, channel_n = args.channel_n,
+		dotys_sin_cos = dotys_sin_cos)
 	#t_len=args.t_len
 
-	args.patience=100
+	args.patience=30
 
 	val_set=True
 	#val_set_mode='stratified'
@@ -3063,7 +3037,7 @@ if __name__ == '__main__':
 					 batch_size_train=args.batch_size_train,batch_size_test=args.batch_size_test,
 					 patience=args.patience,t_len=ds.t_len,class_n=args.class_n,channel_n=args.channel_n,path=args.path,
 					 val_set=val_set,model_type=args.model_type, time_measure=time_measure, stop_epoch=args.stop_epoch,
-					 dotys_sin_cos=dotys_sin_cos)
+					 dotys_sin_cos=dotys_sin_cos, mim = args.mim)
 	model.class_n=data.class_n-1 # Model is designed without background class
 	deb.prints(data.class_n)
 	model.build()
@@ -3120,7 +3094,7 @@ if __name__ == '__main__':
 		deb.prints(data.patches['val']['label'].shape)
 		model.loss_weights=np.load(data.path_patches_bckndfixed+'loss_weights.npy')
 
-	store_patches=True
+	store_patches=False
 	store_patches_each_sample=False
 	if store_patches==True and store_patches_each_sample==True:
 		patchesStorageEachSample = PatchesStorageEachSample(data.path['v'])
