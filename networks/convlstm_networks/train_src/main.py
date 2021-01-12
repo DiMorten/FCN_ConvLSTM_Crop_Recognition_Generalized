@@ -478,7 +478,10 @@ class Dataset(NetObject):
 	def addDotyPadded(self, input_, bounds=None, seq_len=12):
 		if self.doty_flag==True:
 			if bounds!=None:
+#				deb.prints(bounds)
 				dotys_sin_cos = self.dotys_sin_cos[:,bounds[0]:bounds[1] if bounds[1]!=0 else None]
+#				deb.prints(self.dotys_sin_cos.shape)
+#				deb.prints(dotys_sin_cos.shape)
 			dotys_sin_cos_padded = np.zeros((16, seq_len, 2))
 			dotys_sin_cos_padded[:, -dotys_sin_cos.shape[1]:] = dotys_sin_cos
 			input_ = [input_, dotys_sin_cos_padded]
@@ -2693,8 +2696,9 @@ class NetModel(NetObject):
 		init_time=time.time()
 
 
-		batch, data, min_seq_len = self.mim.trainingInit(batch, data, self.t_len, model_t_len=12)
-
+		batch, data, min_seq_len = self.mim.trainingInit(batch, data, self.t_len, 
+									model_t_len=data.labeled_dates)
+		data = self.mim.valLabelSelect(data)
 		data.doty_flag=True
 		#==============================START TRAIN/TEST LOOP============================#
 		for epoch in range(self.epochs):
@@ -2728,8 +2732,8 @@ class NetModel(NetObject):
 				#if args.seq_mode=='var' or args.seq_mode=='var_label':
 				batch_seq_len = 12
 				#deb.prints(self.mim)
-				input_, batch_seq_len = self.mim.batchTrainPreprocess(batch, data, 
-								label_date_id, batch_seq_len, self.t_len)
+				input_ = self.mim.batchTrainPreprocess(batch['train'], data, 
+								label_date_id)
 
 				gt = np.expand_dims(batch['train']['label'].argmax(axis=-1),axis=-1).astype(np.int8)
 				if args.seq_mode=='var' or args.seq_mode=='var_label':
@@ -2776,39 +2780,40 @@ class NetModel(NetObject):
 						self.metrics['val']['loss'] += self.graph.test_on_batch(
 							input_,
 							np.expand_dims(batch['val']['label'].argmax(axis=-1),axis=-1).astype(np.int8))		# Accumulated epoch
+					if args.seq_mode == 'fixed':
+						data.patches['val']['prediction'][idx0:idx1]=(self.graph.predict(
+							input_,
+							batch_size=self.batch['val']['size'])).astype(prediction_dtype) #*13
+					
+					elif args.seq_mode == 'var' or args.seq_mode =='var_label':
+						for t_step in range(data.labeled_dates): # 0 to 11
+							batch_val_label = batch['val']['label'][:, t_step]
+							#data.patches['test']['label'] = data.patches['test']['label'][:, label_id]
+							##deb.prints(batch_val_label.shape)
+							##deb.prints(t_step-data.labeled_dates)
+							input_ = self.mim.batchTrainPreprocess(batch['val'], data,  
+										label_date_id = t_step-data.labeled_dates) # tstep is -12 to -1
 
-					data.patches['val']['prediction'][idx0:idx1]=(self.graph.predict(
-						input_,
-						batch_size=self.batch['val']['size'])).astype(prediction_dtype) #*13
-				self.metrics['val']['loss'] /= self.batch['val']['n']
+							#deb.prints(data.patches['test']['label'].shape)
 
+							data.patches['val']['prediction'][idx0:idx1, t_step]=(self.graph.predict(
+								input_,
+								batch_size=self.batch['val']['size'])).astype(prediction_dtype) #*13
+						
 				metrics_val=data.metrics_get(data.patches['val']['prediction'],data.patches['val']['label'],debug=2)
 
+
+
+
+
+				self.metrics['val']['loss'] /= self.batch['val']['n']
+
 				self.early_stop_check(metrics_val,epoch,most_important='f1_score')
-				#if epoch==1000 or epoch==700 or epoch==500 or epoch==1200:
-				#	self.early_stop['signal']=True
-				#else:
-				#	self.early_stop['signal']=False
-				#if self.early_stop['signal']==True:
-				#	self.graph.save('model_'+str(epoch)+'.h5')
 
 				metrics_val['per_class_acc'].setflags(write=1)
 				metrics_val['per_class_acc'][np.isnan(metrics_val['per_class_acc'])]=-1
 				print(metrics_val['f1_score_noavg'])
 				
-				# if epoch % 5 == 0:
-				# 	print("Writing val...")
-				# 	#print(txt['val']['metrics'])
-				# 	for i in range(len(txt['val']['metrics'])):
-				# 		data.metrics_write_to_txt(txt['val']['metrics'][i],np.squeeze(txt['val']['loss'][i]),
-				# 			txt['val']['epoch'][i],path=self.report['val']['history_path'])
-				# 	txt['val']['metrics']=[]
-				# 	txt['val']['loss']=[]
-				# 	txt['val']['epoch']=[]
-				# else:
-				# 	txt['val']['metrics'].append(metrics_val)
-				# 	txt['val']['loss'].append(self.metrics['val']['loss'])
-				# 	txt['val']['epoch'].append(epoch)
 			#print("Val predictions unique",np.unique(data.patches['val']['prediction'],return_counts=True))
 			#pdb.set_trace()
 			
@@ -2846,14 +2851,27 @@ class NetModel(NetObject):
 							np.expand_dims(batch['test']['label'].argmax(axis=-1),axis=-1).astype(np.int16))		# Accumulated epoch
 
 
-					input_ = batch['test']['in'][:,-12:].astype(np.float16)
-					if args.seq_mode == 'var_label':
-						input_ = self.addDoty(input_, bounds=[-12, None])
-					else:
-						input_ = self.addDoty(input_)
-					data.patches['test']['prediction'][idx0:idx1]=(self.graph.predict(
-						input_,
-						batch_size=self.batch['test']['size'])).astype(prediction_dtype) #*13
+					if args.seq_mode == 'fixed':
+						data.patches['test']['prediction'][idx0:idx1]=(self.graph.predict(
+							input_,
+							batch_size=self.batch['test']['size'])).astype(prediction_dtype) #*13
+					
+					elif args.seq_mode == 'var' or args.seq_mode =='var_label':
+						for t_step in range(data.labeled_dates):
+							batch_val_label = batch['test']['label'][:, t_step]
+							#data.patches['test']['label'] = data.patches['test']['label'][:, label_id]
+							deb.prints(batch_val_label.shape)
+							
+							input_ = self.mim.batchTrainPreprocess(batch['test'], data,  
+										label_date_id = t_step-data.labeled_dates)
+
+							#deb.prints(data.patches['test']['label'].shape)
+
+							data.patches['test']['prediction'][idx0:idx1, t_step]=(self.graph.predict(
+								input_,
+								batch_size=self.batch['test']['size'])).astype(prediction_dtype) #*13
+						
+
 
 				if self.batch_test_stats==True:
 					# Average epoch loss
@@ -3054,7 +3072,7 @@ if __name__ == '__main__':
 			
 		print("=== AUGMENTING TRAINING DATA")
 
-		balancing=True
+		balancing=False
 		if balancing==True:
 			if args.seq_mode=='fixed':
 				label_type = 'Nto1'
@@ -3094,7 +3112,7 @@ if __name__ == '__main__':
 		deb.prints(data.patches['val']['label'].shape)
 		model.loss_weights=np.load(data.path_patches_bckndfixed+'loss_weights.npy')
 
-	store_patches=False
+	store_patches=True
 	store_patches_each_sample=False
 	if store_patches==True and store_patches_each_sample==True:
 		patchesStorageEachSample = PatchesStorageEachSample(data.path['v'])

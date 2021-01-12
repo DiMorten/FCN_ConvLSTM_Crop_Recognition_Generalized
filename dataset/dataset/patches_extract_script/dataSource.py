@@ -293,9 +293,33 @@ class Dataset(object):
 		print(dotys)
 		print(dotys_sin_cos)
 		np.set_printoptions(suppress=False)
+		self.dotys_sin_cos = dotys_sin_cos
 		return np.asarray(dotys), dotys_sin_cos
-		
+	def dotyReplicateSamples(self, sample_n):#,batch['label'].shape[0]
+		self.dotys_sin_cos = self.dotys_sin_cos
+		self.dotys_sin_cos = np.expand_dims(self.dotys_sin_cos,axis=0) # add batch dimension
+		self.dotys_sin_cos = np.repeat(self.dotys_sin_cos, sample_n, axis=0)
+		return self.dotys_sin_cos
+	def setDotyFlag(self, doty_flag):
+		self.doty_flag = doty_flag
 
+	def addDoty(self, input_, bounds=None):
+		if self.doty_flag==True:
+			if bounds!=None:
+				dotys_sin_cos = self.dotys_sin_cos[:,bounds[0]:bounds[1] if bounds[1]!=0 else None]
+			input_ = [input_, dotys_sin_cos]
+		return input_	
+	def addDotyPadded(self, input_, bounds=None, seq_len=12, sample_n=16):
+		if self.doty_flag==True:
+			if bounds!=None:
+#				deb.prints(bounds)
+				dotys_sin_cos = self.dotys_sin_cos[:,bounds[0]:bounds[1] if bounds[1]!=0 else None]
+#				deb.prints(self.dotys_sin_cos.shape)
+#				deb.prints(dotys_sin_cos.shape)
+			dotys_sin_cos_padded = np.zeros((sample_n, seq_len, 2))
+			dotys_sin_cos_padded[:, -dotys_sin_cos.shape[1]:] = dotys_sin_cos
+			input_ = [input_, dotys_sin_cos_padded]
+		return input_
 	def im_load(self,patch,im_names,label_names,add_id,conf):
 		fname=sys._getframe().f_code.co_name
 		for t_step in range(0,conf["t_len"]):	
@@ -411,6 +435,35 @@ class LEM(Dataset):
 			self.im_list=['20170604_S2_10m','20170729_S2_10m','20170803_S2_10m','20170907_S2_10m','20171017_S2_10m','20171116_S2_10m','20171206_S2_10m','20180110_S2_10m','20180214_S2_10m','20180301_S2_10m','20180420_S2_10m','20180510_S2_10m','20180619_S2_10m']
 			
 			self.label_list=self.im_list.copy()
+		self.t_len=len(self.im_list)
+		
+		deb.prints(self.t_len)
+
+class LEM2(Dataset):
+	def __init__(self):
+		name='l2'
+		path="../l2_data/"
+		class_n=15
+		im_w=8658
+		im_h=8484
+		class_list = ['Background','Soybean','Maize','Cotton','Coffee','Beans','Sorghum','Millet','Eucalyptus','Pasture/Grass','Hay','Cerrado','Conversion Area','Soil','Not Identified']
+
+		super().__init__(path,im_h,im_w,class_n,class_list,name)
+
+	def addDataSource(self,dataSource):
+		deb.prints(dataSource.name)
+		self.dataSource = dataSource
+		if self.dataSource.name == 'SARSource':
+
+
+			self.im_list = ['20181110_S1','20181216_S1','20190121_S1','20190214_S1','20190322_S1',
+				'20190415_S1','20190521_S1','20190614_S1','20190720_S1','20190813_S1','20190918_S1',
+				'20191012_S1','20191117_S1','20191223_S1','20200116_S1','20200221_S1','20200316_S1',
+				'20200421_S1','20200515_S1','20200620_S1','20200714_S1','20200819_S1','20200912_S1']
+				
+
+			self.label_list=self.im_list.copy()
+
 		self.t_len=len(self.im_list)
 		
 		deb.prints(self.t_len)

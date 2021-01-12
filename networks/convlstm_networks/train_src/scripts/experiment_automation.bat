@@ -16,21 +16,32 @@ IF %dataset%==cv (
 	set class_n=12
 	set channel_n=2
 ) ELSE (
-	set filename=lm
-	set results_path=../results/convlstm_results/model/lm/
-	set summary_save_path=../results/convlstm_results/summary/lm/
-	set dataset_path=../../../dataset/dataset/lm_data/
-	set sequence_len=19
+	IF %dataset%==lm (
+		set filename=lm
+		set results_path=../results/convlstm_results/model/lm/
+		set summary_save_path=../results/convlstm_results/summary/lm/
+		set dataset_path=../../../dataset/dataset/lm_data/
+		set sequence_len=19
 
-	::sequence_len=11
-	set class_n=15 
-    IF %dataSource%==SARH (
-		set channel_n=3
-		set results_path=../results/convlstm_results/model/lm_sarh/
-		set summary_save_path=../results/convlstm_results/summary/lm_sarh/
-    ) ELSE (
-        set channel_n=2
-    )
+		::sequence_len=11
+		set class_n=15 
+		IF %dataSource%==SARH (
+			set channel_n=3
+			set results_path=../results/convlstm_results/model/lm_sarh/
+			set summary_save_path=../results/convlstm_results/summary/lm_sarh/
+		) ELSE (
+			set channel_n=2
+		)
+	) ELSE (
+		set filename=l2
+		set results_path=../results/convlstm_results/model/l2/
+		set summary_save_path=../results/convlstm_results/summary/l2/
+		set dataset_path=../../../dataset/dataset/l2_data/
+		set sequence_len=19
+
+		set class_n=15 
+
+	)
 )
 echo %results_path%
 echo %channel_n%

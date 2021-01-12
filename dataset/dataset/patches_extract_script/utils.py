@@ -302,7 +302,7 @@ class DataForNet(object):
 			plt.show()
 
 		# Optionally get im stats
-		calcAverageTimeSeriesFlag=False
+		calcAverageTimeSeriesFlag=True
 		if calcAverageTimeSeriesFlag==True:
 			print("============ Beginning calc average timeseries ============")
 			self.datasetStats.calcAverageTimeseries(patch["full_ims"],patch["train_mask"])

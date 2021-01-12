@@ -18,19 +18,24 @@ class MIMVariable(ModelInputMode):
 
     def trainingInit(self,batch,data,t_len, model_t_len):
         batch['train']['shape'] = (batch['train']['size'], model_t_len) + data.patches['train']['in'].shape[2:]
+        batch['val']['shape'] = (batch['val']['size'], model_t_len) + data.patches['val']['in'].shape[2:]
+        batch['test']['shape'] = (batch['test']['size'], model_t_len) + data.patches['test']['in'].shape[2:]
+
         deb.prints(batch['train']['shape'])
         #data.labeled_dates = 12
         deb.prints(data.labeled_dates)
         min_seq_len = t_len - data.labeled_dates + 1 # 20 - 12 + 1 = 9
         deb.prints(min_seq_len)
 
-        data.patches['val']['label'] = data.patches['val']['label'][:, -1]
-        data.patches['test']['label'] = data.patches['test']['label'][:, -1]
+        return batch, data, min_seq_len
+    def valLabelSelect(self, data, label_id = -1):
+        
+        data.patches['val']['label'] = data.patches['val']['label'][:, label_id]
+        data.patches['test']['label'] = data.patches['test']['label'][:, label_id]
         deb.prints(data.patches['val']['label'].shape)
 
         deb.prints(data.patches['test']['label'].shape)
-        return batch, data, min_seq_len
-
+        return data
 class MIMVarLabel(MIMVariable):
     def __init__(self):
         self.batch_seq_len = 12
@@ -50,34 +55,39 @@ class MIMVarLabel(MIMVariable):
         return input_, self.batch_seq_len
 
 class MIMVarLabel_PaddedSeq(MIMVarLabel):
-    def batchTrainPreprocess(self, batch, data, label_date_id, batch_seq_len, t_len):
-        
+    def batchTrainPreprocess(self, batch, data, label_date_id, split='train'):
+        sample_n = batch['in'].shape[0]
         #print("Label, seq start, seq end",label_date_id,label_date_id-batch_seq_len+1,label_date_id+1)
         if label_date_id+1!=0:
             if label_date_id in [-12, -11]:
-                unpadded_input = batch['train']['in'][:, :label_date_id+1]
+                unpadded_input = batch['in'][:, :label_date_id+1]
                 len_input_seq = unpadded_input.shape[1]
                 #deb.prints(len_input_seq)
-                input_ = np.zeros(batch['train']['shape']).astype(np.float16)
+                input_ = np.zeros(batch['shape']).astype(np.float16)
                 input_[:, -len_input_seq:] = unpadded_input
             else:
-                input_ = batch['train']['in'][:, label_date_id-batch_seq_len+1:label_date_id+1]
+                input_ = batch['in'][:, label_date_id-self.batch_seq_len+1:label_date_id+1]
 
         else:
-            input_ = batch['train']['in'][:, label_date_id-batch_seq_len+1:]
+            input_ = batch['in'][:, label_date_id-self.batch_seq_len+1:]
             #print("exception", input_.shape)
         input_ = input_.astype(np.float16)
         input_ = data.addDotyPadded(input_, 
-                    bounds = [label_date_id-batch_seq_len+1, label_date_id+1], seq_len = 12)
+                    bounds = [label_date_id-self.batch_seq_len+1, label_date_id+1], 
+                    seq_len = self.batch_seq_len,
+                    sample_n = sample_n)
         #print(len(input_), input_[0].shape, input_[1].shape)
         
-        return input_, batch_seq_len
+        return input_
     def batchMetricSplitPreprocess(self, batch, data, split='val'):
         input_ = batch[split]['in'][:,-12:].astype(np.float16)
         input_ = data.addDoty(input_, bounds=[-12, None])
         return input_
     # to do: replace batchMetricSplitPreprocess by iteration of all 12 labels,
     # including padded first input sequences.
+    def valLabelSelect(self, data, label_id = -1):
+        return data
+
 
 class MIMVarSeqLabel(MIMVariable):
     def __init__(self):

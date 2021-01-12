@@ -20,7 +20,7 @@ import utils
 import deb
 from model import (conv_lstm,Conv3DMultitemp,UNet,SMCNN,SMCNNlstm, SMCNN_UNet, SMCNN_conv3d, lstm, conv_lstm_semantic, SMCNN_semantic)
 
-from dataSource import DataSource, SARSource, OpticalSource, Dataset, LEM, CampoVerde, OpticalSourceWithClouds,SARHSource
+from dataSource import DataSource, SARSource, OpticalSource, Dataset, LEM, LEM2, CampoVerde, OpticalSourceWithClouds,SARHSource
 
 colorama.init()
 #Input configuration
@@ -77,11 +77,13 @@ else:
 deb.prints(label_type)
 deb.prints(args.patches_save)
 deb.prints(args.dataset_name)
-deb.prints('cv')
+#deb.prints('cv')
 if args.dataset_name=='cv':
     dataset=CampoVerde()
 elif args.dataset_name=='lm':
     dataset=LEM()
+elif args.dataset_name=='l2':
+    dataset=LEM2()
 
 if args.dataset_source=='SAR':
     dataSource=SARSource()
@@ -92,6 +94,8 @@ elif args.dataset_source=='OpticalWithClouds':
 elif args.dataset_source=='SARH': 
     dataSource=SARHSource()
     
+deb.prints(dataset)
+deb.prints(dataSource)
 
 def main(_):
 
