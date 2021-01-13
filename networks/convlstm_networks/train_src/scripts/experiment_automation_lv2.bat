@@ -9,7 +9,9 @@
 
 
 ::dataset=cv
-set dataset=l2
+:: set dataset=l2
+set dataset=lm
+
 ::::dataSource='OpticalWithClouds'
 ::dataSource='SAR'
 set dataSource=SAR
@@ -18,7 +20,8 @@ set model=UUnet4ConvLSTM_doty
 
 :: ==== EXTRACT PATCHES
 :: set id=var_label_valalldates_rep
-set id=var_label_l2_dummy
+:: set id=var_label_l2_dummy
+set id=var_label_valalldates_nonorm
 
 :: set id=fixed_width_sep17_may18_ext_f1es_no13
 

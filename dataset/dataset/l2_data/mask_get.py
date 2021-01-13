@@ -13,10 +13,13 @@ def load_image(patch):
 lem1_mask = cv2.imread('../lm_data/TrainTestMask.tif', 0).astype(np.uint8)
 # lem1 train mask
 print("Unique lem1_mask",np.unique(lem1_mask, return_counts=True))
-
-lem1_mask[lem1_mask!=1] = 0
+lem1_mask_train = lem1_mask.copy()
+lem1_mask_train[lem1_mask_train!=1] = 0
+lem1_mask_test = lem1_mask.copy()
+lem1_mask_test[lem1_mask_test!=2] = 0
 
 lem2_label = load_image('labels/20200912_S1.tif').astype(np.uint8)
+lem1_label = load_image('../lm_data/labels/20170916_S1.tif').astype(np.uint8)
 
 print(lem2_label.dtype)
 print(lem1_mask.shape)
@@ -64,27 +67,31 @@ for cnt in contours :
 
     area = cv2.contourArea(cnt)
     ##print("area", area)
-    mean = cv2.mean(lem1_mask, mask=cnt_mask)
+    mean_train = cv2.mean(lem1_mask_train, mask=cnt_mask)
     ##print("mean", mean)
 
     edge_mean = cv2.mean(edge_mask, mask=cnt_mask)
     ##print("edge_mean", edge_mean)
+    mean_test = cv2.mean(lem1_mask_test, mask=cnt_mask)
 
     #pdb.set_trace()
-    if area>200:
-        if np.average(mean) == 0.0 and np.average(edge_mean) == 0.0:
+    if area>200 and np.average(edge_mean) == 0.0:
+        if np.average(mean_train) > 0.0:
+            cv2.fillPoly(lem2_test_mask, pts =[cnt], color=1)
+            train_count = train_count + 1
+#        elif np.average(mean_test) > 0.0:
+        else:
+
             #cv2.drawContours(lem2_test_mask, cnt, -1, 255, -1)
             cv2.fillPoly(lem2_test_mask, pts =[cnt], color=2) # 2 for testing
             test_count = test_count + 1
             ##print(cnt)
             ##cv2.imwrite('image.png',cnt_mask)
             ##pdb.set_trace()
-        else:
-            cv2.fillPoly(lem2_test_mask, pts =[cnt], color=1)
-            train_count = train_count + 1
+
 print(train_count, test_count)
 cv2.imwrite('TrainTestMask.tif', lem2_test_mask)
-print(np.unique(lem2_test_mask, return_counts=True))
+print("np.unique(lem2_test_mask, return_counts=True)", np.unique(lem2_test_mask, return_counts=True))
  
    
     # Shortlisting the regions based on there area. 

@@ -475,7 +475,7 @@ class Dataset(NetObject):
 				dotys_sin_cos = self.dotys_sin_cos[:,bounds[0]:bounds[1] if bounds[1]!=0 else None]
 			input_ = [input_, dotys_sin_cos]
 		return input_	
-	def addDotyPadded(self, input_, bounds=None, seq_len=12):
+	def addDotyPadded(self, input_, bounds=None, seq_len=12, sample_n = 16):
 		if self.doty_flag==True:
 			if bounds!=None:
 #				deb.prints(bounds)
@@ -3072,7 +3072,7 @@ if __name__ == '__main__':
 			
 		print("=== AUGMENTING TRAINING DATA")
 
-		balancing=False
+		balancing=True
 		if balancing==True:
 			if args.seq_mode=='fixed':
 				label_type = 'Nto1'

@@ -302,7 +302,7 @@ class DataForNet(object):
 			plt.show()
 
 		# Optionally get im stats
-		calcAverageTimeSeriesFlag=True
+		calcAverageTimeSeriesFlag=False
 		if calcAverageTimeSeriesFlag==True:
 			print("============ Beginning calc average timeseries ============")
 			self.datasetStats.calcAverageTimeseries(patch["full_ims"],patch["train_mask"])
@@ -310,7 +310,8 @@ class DataForNet(object):
 			pdb.set_trace()
 		# ==================== histogram before normalization
 
-		patch["full_ims"]=self.dataSource.im_seq_normalize3(patch["full_ims"],patch["train_mask"])
+		#patch["full_ims"]=self.dataSource.im_seq_normalize3(patch["full_ims"],patch["train_mask"],
+		#		scaler_load=True)
 		#patch["full_ims"]=self.dataSource.im_seq_normalize_hwt(patch["full_ims"],patch["train_mask"])
 
 		deb.prints(np.min(patch["full_ims"]))

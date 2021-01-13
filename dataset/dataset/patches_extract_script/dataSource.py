@@ -31,6 +31,7 @@ from sklearn.preprocessing import StandardScaler
 from abc import ABC, abstractmethod
 import time, datetime
 import pdb
+import joblib
 class DataSource(object):
 	def __init__(self, band_n, foldernameInput, label_folder,name):
 		self.band_n = band_n
@@ -56,7 +57,7 @@ class SARSource(DataSource):
 		super().__init__(band_n, foldernameInput, label_folder,name)
 
 
-	def im_seq_normalize3(self,im,mask):
+	def im_seq_normalize3(self,im,mask, scaler_load = False):
 		im_check_flag=False
 		t_steps,h,w,channels=im.shape
 		#im=im.copy()
@@ -76,7 +77,12 @@ class SARSource(DataSource):
 		print(np.min(im_flat[mask_flat==1,:]),np.max(im_flat[mask_flat==1,:]),np.average(im_flat[mask_flat==1,:]))
 
 		scaler=StandardScaler()
-		scaler.fit(im_flat[mask_flat==1,:])
+		scaler_filename = 'normalization_scaler.pkl'
+		if scaler_load == False:
+			scaler.fit(im_flat[mask_flat==1,:])
+			joblib.dump(scaler, scaler_filename)
+		else:
+			scaler = joblib.load(scaler_filename)  
 		#train_norm_flat=scaler.transform(train_flat)
 		#del train_flat
 
