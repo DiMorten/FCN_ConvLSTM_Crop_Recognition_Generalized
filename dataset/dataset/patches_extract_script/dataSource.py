@@ -99,7 +99,7 @@ class SARSource(DataSource):
 		print("FINISHED NORMALIZING, RESULT:")
 		print(np.min(im_norm),np.max(im_norm),np.average(im_norm))
 		return im_norm
-	def im_seq_normalize_hwt(self,im,mask):
+	def im_seq_normalize_hwt(self,im,mask, scaler_load = False):
 		im_check_flag=False
 		t_steps,h,w,channels=im.shape
 		#im=im.copy()
@@ -121,7 +121,13 @@ class SARSource(DataSource):
 		print(np.min(im_flat[mask_flat==1,:]),np.max(im_flat[mask_flat==1,:]),np.average(im_flat[mask_flat==1,:]))
 
 		scaler=StandardScaler()
-		scaler.fit(im_flat[mask_flat==1,:])
+		scaler_filename = 'normalization_scaler.pkl'
+		if scaler_load == False:
+			scaler.fit(im_flat[mask_flat==1,:])
+			joblib.dump(scaler, scaler_filename)
+		else:
+			scaler = joblib.load(scaler_filename)  
+		
 		#train_norm_flat=scaler.transform(train_flat)
 		#del train_flat
 
