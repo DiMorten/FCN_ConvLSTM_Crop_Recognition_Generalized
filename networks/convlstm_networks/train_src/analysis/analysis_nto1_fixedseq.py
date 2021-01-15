@@ -17,7 +17,8 @@ import pdb
 file_id="importantclasses"
 
 from PredictionsLoader import PredictionsLoaderNPY, PredictionsLoaderModel, PredictionsLoaderModelNto1, PredictionsLoaderModelNto1FixedSeq
-
+from colorama import init
+init()
 save_bar_flag=True
 #====================================
 def dense_crf(probs, img=None, n_iters=10, n_classes=19,
@@ -83,6 +84,8 @@ def labels_predictions_filter_transform(label_test,predictions,class_n,
 		if dataset=='cv':
 			important_classes_idx=[0,1,2,6,7,8]
 		elif dataset=='lm':
+			important_classes_idx=[0,1,2,6,8,10,12]
+		elif dataset=='l2':
 			important_classes_idx=[0,1,2,6,8,10,12]
 
 		mode=3
@@ -151,6 +154,8 @@ def metrics_get(label_test,predictions,only_basics=False,debug=1, detailed_t=Non
 
 	#metrics['f1_score']=f1_score(label_test,predictions,average='macro')	
 	metrics['f1_score']=my_f1_score(label_test,predictions) # [0.9 0.9 0.4 0.5] [1 2 3 4 5]
+	metrics['f1_score_noavg']=f1_score(label_test,predictions,average=None) # [0.9 0.9 0.4 0.5] [1 2 3 4 5]
+	
 	metrics['overall_acc']=accuracy_score(label_test,predictions)
 	confusion_matrix_=confusion_matrix(label_test,predictions)
 	#print(confusion_matrix_)
@@ -210,7 +215,7 @@ def experiment_analyze(small_classes_ignore,dataset='cv',
 
 		#predictionsLoader = PredictionsLoaderModel(path_test)
 		#predictionsLoader = PredictionsLoaderModelNto1(path_test)
-		predictionsLoader = PredictionsLoaderModelNto1FixedSeq(path_test)
+		predictionsLoader = PredictionsLoaderModelNto1FixedSeq(path_test, dataset=dataset)
 
 
 		predictions, label_test = predictionsLoader.loadPredictions(model_path)
@@ -569,6 +574,8 @@ def experiments_plot(metrics,experiment_list,dataset,
 
 #dataset='lm_optical_clouds'
 dataset='lm'
+dataset='l2'
+
 #dataset='cv'
 #dataset='lm_sarh'
 
@@ -634,6 +641,15 @@ if dataset=='cv':
 		experiment_groups=[['model_best_BUnet4ConvLSTM_float32.h5',
 			'model_best_BUnet4ConvLSTM_int16.h5',
 			'model_best_BUnet4ConvLSTM_windows_test.h5']]
+
+elif dataset=='l2':
+		exp_id=1
+		experiment_groups=[[
+			'model_best_UUnet4ConvLSTM_doty_var_label_valalldates_hwtnorm.h5'
+		]]	
+		experiment_groups=[[
+			'model_best_UUnet4ConvLSTM_doty_var_label_valalldates.h5'
+		]]	
 
 		
 elif dataset=='lm':
@@ -838,6 +854,8 @@ elif dataset=='lm':
 		experiment_groups=[['model_best_UUnet4ConvLSTM_doty_var_may18_ext_f1es_rep1.h5']]	
 		experiment_groups=[['model_best_UUnet4ConvLSTM_var_may18_ext_f1es_rep1.h5']]	
 		experiment_groups=[['model_best_UUnet4ConvLSTM_doty_var_label_valalldates.h5']]	
+		experiment_groups=[['model_best_UUnet4ConvLSTM_doty_var_label_valalldates_hwtnorm.h5']]	
+
 
 elif dataset=='lm_optical':
 	exp_id=1

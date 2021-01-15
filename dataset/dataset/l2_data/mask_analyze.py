@@ -10,10 +10,12 @@ def load_image(patch):
     # get array
     img = gdal_header.ReadAsArray()
     return img
-lem2_mask = cv2.imread('TrainTestMask_strict.tif', 0).astype(np.uint8)
+lem2_mask = cv2.imread('TrainTestMask.tif', 0).astype(np.uint8)
 print(lem2_mask.shape)
+lem2_label_name = 'labels/20200912_S1.tif'
+lem2_label_name = 'labels/20200221_S1.tif'
 
-lem2_label = load_image('labels/20200912_S1.tif').astype(np.uint8)
+lem2_label = load_image(lem2_label_name).astype(np.uint8)
 
 lem2_label_masked = lem2_label.copy()
 lem2_label_masked[lem2_mask!=2] = 0

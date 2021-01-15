@@ -40,7 +40,7 @@ IF %dataset%==cv (
 		set sequence_len=19
 
 		set class_n=15 
-
+		set channel_n=2
 	)
 )
 echo %results_path%

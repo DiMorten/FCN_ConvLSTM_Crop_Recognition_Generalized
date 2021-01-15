@@ -310,10 +310,19 @@ class DataForNet(object):
 			pdb.set_trace()
 		# ==================== histogram before normalization
 
-		#patch["full_ims"]=self.dataSource.im_seq_normalize3(patch["full_ims"],patch["train_mask"],
-		#		scaler_load=False)
-		patch["full_ims"]=self.dataSource.im_seq_normalize_hwt(patch["full_ims"],patch["train_mask"],
+		patch["full_ims"]=self.dataSource.im_seq_normalize3(patch["full_ims"],patch["train_mask"],
 				scaler_load=False)
+		#patch["full_ims"]=self.dataSource.im_seq_normalize_hwt(patch["full_ims"],patch["train_mask"],
+		#		scaler_load=True)
+
+
+		# Optionally get im stats
+		calcAverageTimeSeriesFlag=False
+		if calcAverageTimeSeriesFlag==True:
+			print("============ Beginning calc average timeseries ============")
+			self.datasetStats.calcAverageTimeseries(patch["full_ims"],patch["train_mask"])
+			#self.datasetStats.calcAverageTimeseriesPerClass(self.full_ims_train,patch["train_mask"],self.full_label_train)
+			pdb.set_trace()
 
 		deb.prints(np.min(patch["full_ims"]))
 		deb.prints(np.max(patch["full_ims"]))
@@ -352,14 +361,6 @@ class DataForNet(object):
 			for t_step in range(self.full_ims_train.shape[0]):
 				histogram_get(self.full_ims_train[t_step],patch["train_mask"])
 			plt.show()
-
-		# Optionally get im stats
-		calcAverageTimeSeriesFlag=False
-		if calcAverageTimeSeriesFlag==True:
-			print("============ Beginning calc average timeseries ============")
-			self.datasetStats.calcAverageTimeseries(patch["full_ims"],patch["train_mask"])
-			#self.datasetStats.calcAverageTimeseriesPerClass(self.full_ims_train,patch["train_mask"],self.full_label_train)
-			pdb.set_trace()
 
 
 

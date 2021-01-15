@@ -59,7 +59,7 @@ class MIMVarLabel_PaddedSeq(MIMVarLabel):
         sample_n = batch['in'].shape[0]
         #print("Label, seq start, seq end",label_date_id,label_date_id-batch_seq_len+1,label_date_id+1)
         if label_date_id+1!=0:
-            if label_date_id in [-12, -11]:
+            if label_date_id in data.padded_dates:
                 unpadded_input = batch['in'][:, :label_date_id+1]
                 len_input_seq = unpadded_input.shape[1]
                 #deb.prints(len_input_seq)

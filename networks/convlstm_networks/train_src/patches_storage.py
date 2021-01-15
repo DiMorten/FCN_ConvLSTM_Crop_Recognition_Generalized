@@ -30,7 +30,7 @@ class PatchesStorageAllSamples(PatchesStorage):
 	def store(self,data_patches):
 		self.storeSplit(data_patches['train'],'train_bckndfixed')
 		self.storeSplit(data_patches['test'],'test_bckndfixed')
-		self.storeSplit(data_patches['val'],'val_bckndfixed')
+		#self.storeSplit(data_patches['val'],'val_bckndfixed')
 
 	def storeSplit(self, patches, split='train_bckndfixed'):
 		pathlib.Path(self.path[split]).mkdir(parents=True, exist_ok=True) 

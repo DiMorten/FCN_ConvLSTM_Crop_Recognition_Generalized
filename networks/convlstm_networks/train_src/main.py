@@ -49,7 +49,7 @@ from patches_storage import PatchesStorageEachSample,PatchesStorageAllSamples
 from datagenerator import DataGenerator
 
 sys.path.append('../../../dataset/dataset/patches_extract_script/')
-from dataSource import DataSource, SARSource, OpticalSource, Dataset, LEM, CampoVerde, OpticalSourceWithClouds, Humidity
+from dataSource import DataSource, SARSource, OpticalSource, Dataset, LEM, LEM2, CampoVerde, OpticalSourceWithClouds, Humidity
 from model_input_mode import MIMFixed, MIMVarLabel, MIMVarSeqLabel, MIMVarLabel_PaddedSeq
 
 parser = argparse.ArgumentParser(description='')
@@ -221,6 +221,7 @@ class NetObject(object):
 		self.dotys_sin_cos = dotys_sin_cos
 		self.dotys_sin_cos = np.expand_dims(self.dotys_sin_cos,axis=0) # add batch dimension
 		self.dotys_sin_cos = np.repeat(self.dotys_sin_cos,16,axis=0)
+
 # ================= Dataset class implements data loading, patch extraction, metric calculation and image reconstruction =======#
 class Dataset(NetObject):
 
@@ -233,6 +234,10 @@ class Dataset(NetObject):
 									[4,[255,255,255],255]]
 		if self.debug >= 1:
 			print("Initializing Dataset instance")
+		
+		#should be in another object
+		self.padded_dates = []
+		
 	def create(self):
 		self.image["train"], self.patches["train"] = self.subset_create(
 			self.path['train'],self.patches["train"]['step'])
@@ -262,9 +267,15 @@ class Dataset(NetObject):
 		deb.prints(self.patches['train']['in'].shape)
 		deb.prints(self.patches['test']['in'].shape)
 		deb.prints(self.patches['train']['label'].shape)
+		# for lem2
+		self.patches['train']['label'] = self.patches['test']['label'].copy()
+		self.patches['train']['in'] = self.patches['test']['in'].copy() 
+
 		self.dataset=None
 		unique,count=np.unique(self.patches['train']['label'],return_counts=True)
-		deb.prints(unique)
+		deb.prints(np.unique(self.patches['train']['label'],return_counts=True))
+		deb.prints(np.unique(self.patches['test']['label'],return_counts=True))
+		#pdb.set_trace()
 		deb.prints(count)
 
 		self.dataset='seq1'
@@ -361,7 +372,7 @@ class Dataset(NetObject):
 				deb.prints(t_step)
 				deb.prints(np.unique(self.patches['test']['label'].argmax(axis=-1)[:,t_step],return_counts=True))
 			
-		self.patches['train']['n']=self.patches['train']['in'].shape[0]
+		self.patches['train']['n']=self.patches['train']['label'].shape[0]
 		self.patches['train']['idx']=range(self.patches['train']['n'])
 		np.save('labels_beginning.npy',self.patches['test']['label'])
 
@@ -934,7 +945,7 @@ class Dataset(NetObject):
 
 class NetModel(NetObject):
 	def __init__(self, batch_size_train=32, batch_size_test=200, epochs=30000, 
-		patience=10, eval_mode='metrics', val_set=True,
+		patience=10, eval_mode='metrics', val_set=False,
 		model_type='DenseNet', time_measure=False, stop_epoch=0, dotys_sin_cos=None, mim=MIMFixed(), 
 		*args, **kwargs):
 
@@ -2703,7 +2714,7 @@ class NetModel(NetObject):
 		#==============================START TRAIN/TEST LOOP============================#
 		for epoch in range(self.epochs):
 
-			idxs=np.random.permutation(data.patches['train']['in'].shape[0])
+			idxs=np.random.permutation(data.patches['train']['label'].shape[0])
 			data.patches['train']['in']=data.patches['train']['in'][idxs]
 			data.patches['train']['label']=data.patches['train']['label'][idxs]
 			
@@ -3001,8 +3012,11 @@ if __name__ == '__main__':
 
 
 	dataset='lm'
+	dataset='l2'
 	if dataset=='lm':
 		ds=LEM()
+	elif dataset=='l2':
+		ds=LEM2()
 	dataSource = SARSource()
 	ds.addDataSource(dataSource)
 	time_delta = ds.getTimeDelta(delta=True,format='days')
@@ -3072,7 +3086,7 @@ if __name__ == '__main__':
 			
 		print("=== AUGMENTING TRAINING DATA")
 
-		balancing=True
+		balancing=False
 		if balancing==True:
 			if args.seq_mode=='fixed':
 				label_type = 'Nto1'
@@ -3140,7 +3154,7 @@ if __name__ == '__main__':
 	deb.prints(data.patches['train']['label'].shape)
 
 	#deb.prints_vars_memory()
-	print(data.patches['train']['in'].nbytes,data.patches['val']['in'].nbytes,data.patches['test']['in'].nbytes)
+	##print(data.patches['train']['in'].nbytes,data.patches['val']['in'].nbytes,data.patches['test']['in'].nbytes)
 	##pdb.set_trace()
 
 	#=========== End of moving bcknd label from 0 to last value
