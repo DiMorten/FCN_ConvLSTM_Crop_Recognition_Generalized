@@ -1,19 +1,47 @@
 import deb
 import numpy as np
-
+import pdb
 class ModelInputMode():
     pass
 class MIMFixed(ModelInputMode):
     def __init__(self):
         pass
     def batchTrainPreprocess(self, batch, data, label_date_id, batch_seq_len=12):
-        input_ = batch['train']['in'].astype(np.float16)
+        input_ = batch['in'].astype(np.float16)
+        input_ = data.addDoty(input_)
+        return input_
+    def batchValPreprocess(self, batch, data):
+        input_ = ['in'].astype(np.float16)
+        input_ = data.addDoty(input_)
+        return input_
+
+    def trainingInit(self,batch,data,t_len, model_t_len):
+        batch['train']['shape'] = (batch['train']['size'], model_t_len) + data.patches['train']['in'].shape[2:]
+        batch['val']['shape'] = (batch['val']['size'], model_t_len) + data.patches['val']['in'].shape[2:]
+        batch['test']['shape'] = (batch['test']['size'], model_t_len) + data.patches['test']['in'].shape[2:]
+
+        deb.prints(batch['train']['shape'])
+        #data.labeled_dates = 12
+##        deb.prints(data.labeled_dates)
+#        min_seq_len = t_len - data.labeled_dates + 1 # 20 - 12 + 1 = 9
+#        deb.prints(min_seq_len)
+
+        return batch, data, None
+
+    def valLabelSelect(self, data, label_id = -1):
+        return data
+class MIMFixedLabelSeq(MIMFixed):
+    def __init__(self):
+        pass
+    def batchTrainPreprocess(self, batch, data, label_date_id, batch_seq_len=12):
+        input_ = batch['train']['in'][:,:label_date_id].astype(np.float16)
         input_ = data.addDoty(input_)
         return input_
     def batchValPreprocess(self, batch, data):
         input_ = batch['val']['in'].astype(np.float16)
         input_ = data.addDoty(input_)
         return input_
+
 class MIMVariable(ModelInputMode):
 
     def trainingInit(self,batch,data,t_len, model_t_len):
@@ -36,26 +64,37 @@ class MIMVariable(ModelInputMode):
 
         deb.prints(data.patches['test']['label'].shape)
         return data
+
 class MIMVarLabel(MIMVariable):
     def __init__(self):
         self.batch_seq_len = 12
         pass
-    def batchTrainPreprocess(self, batch, data, label_date_id, batch_seq_len, t_len):
+    def batchTrainPreprocess(self, batch, data, label_date_id, batch_seq_len=12):
         
         #print("Label, seq start, seq end",label_date_id,label_date_id-batch_seq_len+1,label_date_id+1)
         if label_date_id+1!=0:
 
-            input_ = batch['train']['in'][:, label_date_id-batch_seq_len+1:label_date_id+1]
+            input_ = batch['in'][:, label_date_id-batch_seq_len+1:label_date_id+1]
         else:
-            input_ = batch['train']['in'][:, label_date_id-batch_seq_len+1:]
+            input_ = batch['in'][:, label_date_id-batch_seq_len+1:]
             #print("exception", input_.shape)
+        #print(input_.shape)
+        #print(label_date_id, batch_seq_len, label_date_id-batch_seq_len+1, label_date_id+1)
+        #pdb.set_trace()
         input_ = input_.astype(np.float16)
         input_ = data.addDoty(input_, 
                     bounds = [label_date_id-batch_seq_len+1, label_date_id+1])
-        return input_, self.batch_seq_len
+        return input_
+    def batchMetricSplitPreprocess(self, batch, data, label_date_id, batch_seq_len=12):
+        return batchTrainPreprocess(batch, data, label_date_id, batch_seq_len)
+
+class MIMFixedLabelAllLabels(MIMVarLabel):
+
+    def valLabelSelect(self, data, label_id = -1):
+        return data
 
 class MIMVarLabel_PaddedSeq(MIMVarLabel):
-    def batchTrainPreprocess(self, batch, data, label_date_id, split='train'):
+    def batchTrainPreprocess(self, batch, data, label_date_id, batch_seq_len=None):
         sample_n = batch['in'].shape[0]
         #print("Label, seq start, seq end",label_date_id,label_date_id-batch_seq_len+1,label_date_id+1)
         if label_date_id+1!=0:

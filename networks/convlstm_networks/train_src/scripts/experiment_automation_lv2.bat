@@ -21,7 +21,9 @@ set model=UUnet4ConvLSTM_doty
 :: ==== EXTRACT PATCHES
 :: set id=var_label_valalldates_rep
 :: set id=var_label_l2_dummy
-set id=var_label_valalldates_nonorm_dummy
+:: set id=var_label_valalldates_nonorm_dummy
+set id=fixed_label_len_dummy
+
 
 :: set id=fixed_width_sep17_may18_ext_f1es_no13
 

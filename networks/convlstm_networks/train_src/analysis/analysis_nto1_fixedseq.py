@@ -650,6 +650,9 @@ elif dataset=='l2':
 		experiment_groups=[[
 			'model_best_UUnet4ConvLSTM_doty_var_label_valalldates.h5'
 		]]	
+		experiment_groups=[[
+			'model_best_UUnet4ConvLSTM_doty_fixed_label_len.h5'
+		]]	
 
 		
 elif dataset=='lm':

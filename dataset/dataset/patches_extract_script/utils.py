@@ -310,10 +310,10 @@ class DataForNet(object):
 			pdb.set_trace()
 		# ==================== histogram before normalization
 
-		patch["full_ims"]=self.dataSource.im_seq_normalize3(patch["full_ims"],patch["train_mask"],
-				scaler_load=False)
-		#patch["full_ims"]=self.dataSource.im_seq_normalize_hwt(patch["full_ims"],patch["train_mask"],
-		#		scaler_load=True)
+		#patch["full_ims"]=self.dataSource.im_seq_normalize3(patch["full_ims"],patch["train_mask"],
+		#		scaler_load=False)
+		patch["full_ims"]=self.dataSource.im_seq_normalize_hwt(patch["full_ims"],patch["train_mask"],
+				scaler_load=True)
 
 
 		# Optionally get im stats

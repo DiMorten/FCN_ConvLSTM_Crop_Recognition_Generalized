@@ -50,7 +50,7 @@ from datagenerator import DataGenerator
 
 sys.path.append('../../../dataset/dataset/patches_extract_script/')
 from dataSource import DataSource, SARSource, OpticalSource, Dataset, LEM, LEM2, CampoVerde, OpticalSourceWithClouds, Humidity
-from model_input_mode import MIMFixed, MIMVarLabel, MIMVarSeqLabel, MIMVarLabel_PaddedSeq
+from model_input_mode import MIMFixed, MIMVarLabel, MIMVarSeqLabel, MIMVarLabel_PaddedSeq, MIMFixedLabelAllLabels
 
 parser = argparse.ArgumentParser(description='')
 parser.add_argument('-tl', '--t_len', dest='t_len',
@@ -105,12 +105,20 @@ if args.patch_step_test==None:
 
 deb.prints(args.patch_step_test)
 
-args.seq_mode = 'var_label'
+#args.seq_mode = 'var_label'
+
+#args.seq_mode = 'var_label'
+args.seq_mode = 'fixed'
+
+
 if args.seq_mode == 'var_label':
 	#args.mim = MIMVarLabel()
 	args.mim = MIMVarLabel_PaddedSeq()
 elif args.seq_mode == 'var':
 	args.mim = MIMVarSeqLabel()
+elif args.seq_mode == 'fixed_label_len':
+	args.mim = MIMVarLabel()
+	args.mim =MIMFixedLabelAllLabels()
 else:
 	args.mim = MIMFixed()
 deb.prints(args.seq_mode)
@@ -268,8 +276,8 @@ class Dataset(NetObject):
 		deb.prints(self.patches['test']['in'].shape)
 		deb.prints(self.patches['train']['label'].shape)
 		# for lem2
-		self.patches['train']['label'] = self.patches['test']['label'].copy()
-		self.patches['train']['in'] = self.patches['test']['in'].copy() 
+		#self.patches['train']['label'] = self.patches['test']['label'].copy()
+		#self.patches['train']['in'] = self.patches['test']['in'].copy() 
 
 		self.dataset=None
 		unique,count=np.unique(self.patches['train']['label'],return_counts=True)
@@ -283,23 +291,25 @@ class Dataset(NetObject):
 
 		# ========================================= pick label for N to 1
 		deb.prints(args.seq_mode)
+
 		if args.seq_mode == 'fixed':
 			args.seq_label = -1
 			self.patches['train']['label'] = self.patches['train']['label'][:,args.seq_label]
 			self.patches['test']['label'] = self.patches['test']['label'][:,args.seq_label]
-		elif args.seq_mode == 'var':
+			self.labeled_dates = 1
+		elif args.seq_mode == 'fixed_label_len':
+			args.seq_label = -5
+			self.patches['train']['label'] = self.patches['train']['label'][:,args.seq_label]
+			self.patches['test']['label'] = self.patches['test']['label'][:,args.seq_label]
+			self.labeled_dates = 1
+		elif args.seq_mode == 'var' or args.seq_mode == 'var_label':
 
 			self.labeled_dates = 12
 
 			self.patches['train']['label'] = self.patches['train']['label'][:, -self.labeled_dates:]
 			self.patches['test']['label'] = self.patches['test']['label'][:, -self.labeled_dates:]
-		elif args.seq_mode == 'var_label':
-#			self.labeled_dates = 11
-			self.labeled_dates = 12
 
-			self.patches['train']['label'] = self.patches['train']['label'][:, -self.labeled_dates:]
-			self.patches['test']['label'] = self.patches['test']['label'][:, -self.labeled_dates:]
-
+			
 		self.class_n=unique.shape[0] #10 plus background
 
 		# ======================================= fix labels before one hot
@@ -346,7 +356,8 @@ class Dataset(NetObject):
 		print("Switching to one hot")
 		self.patches['train']['label']=self.batch_label_to_one_hot(self.patches['train']['label'])
 		self.patches['test']['label']=self.batch_label_to_one_hot(self.patches['test']['label'])
-
+		deb.prints(self.patches['train']['label'].shape)
+		#pdb.set_trace()
 		self.patches['train']['in']=self.patches['train']['in'].astype(np.float16)
 		self.patches['test']['in']=self.patches['test']['in'].astype(np.float16)
 
@@ -484,6 +495,9 @@ class Dataset(NetObject):
 		if self.doty_flag==True:
 			if bounds!=None:
 				dotys_sin_cos = self.dotys_sin_cos[:,bounds[0]:bounds[1] if bounds[1]!=0 else None]
+			else:
+				dotys_sin_cos = self.dotys_sin_cos
+
 			input_ = [input_, dotys_sin_cos]
 		return input_	
 	def addDotyPadded(self, input_, bounds=None, seq_len=12, sample_n = 16):
@@ -2706,9 +2720,9 @@ class NetModel(NetObject):
 		#for epoch in [0,1]:
 		init_time=time.time()
 
-
+		model_t_len = 12
 		batch, data, min_seq_len = self.mim.trainingInit(batch, data, self.t_len, 
-									model_t_len=data.labeled_dates)
+									model_t_len=model_t_len)
 		data = self.mim.valLabelSelect(data)
 		data.doty_flag=True
 		#==============================START TRAIN/TEST LOOP============================#
@@ -2724,7 +2738,10 @@ class NetModel(NetObject):
 
 			# Random shuffle the data
 			##data.patches['train']['in'], data.patches['train']['label'] = shuffle(data.patches['train']['in'], data.patches['train']['label'])
-			label_date_id = -data.labeled_dates
+			if args.seq_mode=='var' or args.seq_mode=='var_label':
+				label_date_id = -data.labeled_dates
+			else:
+				label_date_id = -1 # fixed
 			#=============================TRAIN LOOP=========================================#
 			for batch_id in range(0, self.batch['train']['n']):
 				
@@ -2744,7 +2761,7 @@ class NetModel(NetObject):
 				batch_seq_len = 12
 				#deb.prints(self.mim)
 				input_ = self.mim.batchTrainPreprocess(batch['train'], data, 
-								label_date_id)
+								label_date_id, batch_seq_len)
 
 				gt = np.expand_dims(batch['train']['label'].argmax(axis=-1),axis=-1).astype(np.int8)
 				if args.seq_mode=='var' or args.seq_mode=='var_label':
@@ -2774,7 +2791,13 @@ class NetModel(NetObject):
 			#================== VAL LOOP=====================#
 			if self.val_set:
 				deb.prints(data.patches['val']['label'].shape)
-				data.patches['val']['prediction']=np.zeros_like(data.patches['val']['label'][...,:-1],dtype=prediction_dtype)
+#				if args.seq_mode == 'fixed':
+#					data.patches['val']['prediction']=np.zeros_like(data.patches['val']['label'][...,:-1],dtype=prediction_dtype)
+				if args.seq_mode == 'fixed_label_len':
+					data.patches['val']['prediction']=np.zeros_like(data.patches['val']['label'],dtype=prediction_dtype)
+				elif args.seq_mode == 'var' or args.seq_mode =='var_label' or args.seq_mode == 'fixed':
+					data.patches['val']['prediction']=np.zeros_like(data.patches['val']['label'][...,:-1],dtype=prediction_dtype)
+
 				self.batch_test_stats=False
 
 				for batch_id in range(0, self.batch['val']['n']):
@@ -2784,14 +2807,17 @@ class NetModel(NetObject):
 					batch['val']['in'] = data.patches['val']['in'][idx0:idx1]
 					batch['val']['label'] = data.patches['val']['label'][idx0:idx1]
 
-					input_ = self.mim.batchMetricSplitPreprocess(batch, data, split='val')
+#					input_ = self.mim.batchMetricSplitPreprocess(batch['val'], data)
 
 					if self.batch_test_stats:
 						
 						self.metrics['val']['loss'] += self.graph.test_on_batch(
 							input_,
 							np.expand_dims(batch['val']['label'].argmax(axis=-1),axis=-1).astype(np.int8))		# Accumulated epoch
-					if args.seq_mode == 'fixed':
+					if args.seq_mode == 'fixed' or args.seq_mode == 'fixed_label_len':
+						input_ = self.mim.batchTrainPreprocess(batch['val'], data,  
+									label_date_id = -1) # tstep is -12 to -1
+
 						data.patches['val']['prediction'][idx0:idx1]=(self.graph.predict(
 							input_,
 							batch_size=self.batch['val']['size'])).astype(prediction_dtype) #*13
@@ -2862,7 +2888,9 @@ class NetModel(NetObject):
 							np.expand_dims(batch['test']['label'].argmax(axis=-1),axis=-1).astype(np.int16))		# Accumulated epoch
 
 
-					if args.seq_mode == 'fixed':
+					if args.seq_mode == 'fixed' or args.seq_mode=='fixed_label_len':
+						input_ = self.mim.batchTrainPreprocess(batch['test'], data,  
+									label_date_id = -1)
 						data.patches['test']['prediction'][idx0:idx1]=(self.graph.predict(
 							input_,
 							batch_size=self.batch['test']['size'])).astype(prediction_dtype) #*13
@@ -3012,7 +3040,7 @@ if __name__ == '__main__':
 
 
 	dataset='lm'
-	dataset='l2'
+	#dataset='l2'
 	if dataset=='lm':
 		ds=LEM()
 	elif dataset=='l2':
@@ -3086,9 +3114,9 @@ if __name__ == '__main__':
 			
 		print("=== AUGMENTING TRAINING DATA")
 
-		balancing=False
+		balancing=True
 		if balancing==True:
-			if args.seq_mode=='fixed':
+			if args.seq_mode=='fixed' or args.seq_mode=='fixed_label_len':
 				label_type = 'Nto1'
 			elif args.seq_mode=='var' or args.seq_mode=='var_label':	
 				label_type = 'NtoN'
