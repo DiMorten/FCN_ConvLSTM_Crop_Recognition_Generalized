@@ -94,6 +94,9 @@ parser.add_argument('-ste', '--stop_epoch', dest='stop_epoch',
 					type=int, default=-1, help='Stop epoch. If 0, no fixed stop epoch.')
 parser.add_argument('-seq_mode', '--seq_mode', dest='seq_mode',
 					type=str, default='fixed', help='Sequence len type. variable or fixed')
+parser.add_argument('-ds', '--dataset', dest='dataset',
+					type=str, default='lm', help='Dataset name')
+
 
 
 
@@ -124,6 +127,7 @@ else:
 deb.prints(args.seq_mode)
 deb.prints(args.mim)
 
+dataset = args.dataset
 #========= overwrite for direct execution of this py file
 direct_execution=False
 if direct_execution==True:
@@ -189,7 +193,7 @@ def sizeof_fmt(num, suffix='B'):
 class NetObject(object):
 
 	def __init__(self, patch_len=32, patch_step_train=32,patch_step_test=32, path="../data/", im_name_train="Image_Train.tif", im_name_test="Image_Test.tif", label_name_train="Reference_Train.tif", label_name_test="Reference_Test.tif", channel_n=2, debug=1,exp_id="skip_connections",
-		t_len=7,class_n=11, dotys_sin_cos=None):
+		t_len=7,class_n=11, dotys_sin_cos=None, ds=None):
 		print("Initializing object...")
 		print(t_len, channel_n)
 		self.patch_len = patch_len
@@ -229,7 +233,7 @@ class NetObject(object):
 		self.dotys_sin_cos = dotys_sin_cos
 		self.dotys_sin_cos = np.expand_dims(self.dotys_sin_cos,axis=0) # add batch dimension
 		self.dotys_sin_cos = np.repeat(self.dotys_sin_cos,16,axis=0)
-
+		self.ds = ds
 # ================= Dataset class implements data loading, patch extraction, metric calculation and image reconstruction =======#
 class Dataset(NetObject):
 
@@ -315,18 +319,8 @@ class Dataset(NetObject):
 		# ======================================= fix labels before one hot
 		print("===== preprocessing labels")
 		classes = np.unique(self.patches['train']['label'])
-		deb.prints(classes)
+		deb.prints(np.unique(self.patches['train']['label'], return_counts=True))
 		
-		self.patches['train']['label'] = self.patches['train']['label']-1
-		self.patches['test']['label'] = self.patches['test']['label']-1
-		
-##            labels_val = labels_val-1
-		class_n_no_bkcnd = len(classes)-1
-		self.patches['train']['label'][self.patches['train']['label']==255] = class_n_no_bkcnd
-		self.patches['test']['label'][self.patches['test']['label']==255] = class_n_no_bkcnd
-
-		classes = np.unique(self.patches['train']['label'])
-		deb.prints(classes)
 
 ##            labels_val[labels_val==255] = params.classes
 		tmp_tr = self.patches['train']['label'].copy()
@@ -341,6 +335,28 @@ class Dataset(NetObject):
 		for j in range(len(classes)):
 			self.patches['train']['label'][tmp_tr == classes[j]] = labels2new_labels[classes[j]]
 			self.patches['test']['label'][tmp_tst == classes[j]] = labels2new_labels[classes[j]]
+
+		# save dicts
+		f = open("new_labels2labels_"+self.ds.name+"_"+self.ds.im_list[-1]+".pkl", "wb")
+		pickle.dump(new_labels2labels, f)
+		f.close()
+
+#		pdb.set_trace()
+
+		self.patches['train']['label'] = self.patches['train']['label']-1
+		self.patches['test']['label'] = self.patches['test']['label']-1
+
+		deb.prints(np.unique(self.patches['train']['label'], return_counts=True))
+		
+##            labels_val = labels_val-1
+		class_n_no_bkcnd = len(classes)-1
+		self.patches['train']['label'][self.patches['train']['label']==255] = class_n_no_bkcnd
+		self.patches['test']['label'][self.patches['test']['label']==255] = class_n_no_bkcnd
+
+		classes = np.unique(self.patches['train']['label'])
+		deb.prints(classes)
+		deb.prints(np.unique(self.patches['train']['label'], return_counts=True))
+		pdb.set_trace()
 
 ##                labels_val[tmp_val == classes[j]] = labels2new_labels[classes[j]]
 		deb.prints(self.patches['train']['label'].shape)
@@ -3039,7 +3055,7 @@ if __name__ == '__main__':
 	time_measure=False
 
 
-	dataset='lm'
+#	dataset='l2'
 	#dataset='l2'
 	if dataset=='lm':
 		ds=LEM()
@@ -3055,7 +3071,7 @@ if __name__ == '__main__':
 	data = Dataset(patch_len=args.patch_len, patch_step_train=args.patch_step_train,
 		patch_step_test=args.patch_step_test,exp_id=args.exp_id,
 		path=args.path, t_len=ds.t_len, class_n=args.class_n, channel_n = args.channel_n,
-		dotys_sin_cos = dotys_sin_cos)
+		dotys_sin_cos = dotys_sin_cos, ds = ds)
 	#t_len=args.t_len
 
 	args.patience=30
