@@ -6,7 +6,7 @@ import numpy as np
 #import scipy.io as sio
 import numpy as np
 import glob
-import os
+import os, sys
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import confusion_matrix,f1_score,accuracy_score,classification_report,recall_score,precision_score
 #from sklearn.externals import joblib
@@ -20,6 +20,8 @@ from PredictionsLoader import PredictionsLoaderNPY, PredictionsLoaderModel, Pred
 from colorama import init
 init()
 save_bar_flag=True
+sys.path.append('../')
+import deb
 #====================================
 def dense_crf(probs, img=None, n_iters=10, n_classes=19,
 			  sxy_gaussian=(1, 1), compat_gaussian=4,
@@ -61,9 +63,9 @@ def labels_predictions_filter_transform(label_test,predictions,class_n,
 			v = np.expand_dims(v, axis=0)
 			predictions[i] = dense_crf(v,img=img_in,n_iters=10,sxy_gaussian=(3, 3), compat_gaussian=3,n_classes=class_n)
 
-	predictions=predictions.argmax(axis=-1)
+	#predictions=predictions.argmax(axis=-1)
 	predictions=np.reshape(predictions,-1)
-	label_test=label_test.argmax(axis=-1)
+	#label_test=label_test.argmax(axis=-1)
 	label_test=np.reshape(label_test,-1)
 #	predictions=predictions[label_test<class_n]
 #	label_test=label_test[label_test<class_n]
@@ -82,7 +84,7 @@ def labels_predictions_filter_transform(label_test,predictions,class_n,
 	print("Loaded predictions shape: ",predictions.shape)
 	print("Loaded label test shape: ",label_test.shape)
 
-	#pdb.set_trace()
+	# map small classes to single class 20
 	if small_classes_ignore==True:
 		# Eliminate non important classes
 		class_list,class_count = np.unique(label_test,return_counts=True)
@@ -134,7 +136,7 @@ def labels_predictions_filter_transform(label_test,predictions,class_n,
 
 
 		if debug>=0: print("Class unique after eliminating non important classes:",np.unique(label_test,return_counts=True))
-		#print("Pred unique after eliminating non important classes:",np.unique(predictions,return_counts=True))
+		print("Pred unique after eliminating non important classes:",np.unique(predictions,return_counts=True))
 
 
 	if debug>0:
@@ -231,14 +233,14 @@ def experiment_analyze(small_classes_ignore,dataset='cv',
 	#label_test=np.load(path+'labels.npy', allow_pickle=True)
 
 	
-	print("Loaded predictions unique: ",np.unique(predictions.argmax(axis=-1),return_counts=True))
-	print("Loaded label test unique: ",np.unique(label_test.argmax(axis=-1),return_counts=True))
+	print("Loaded predictions unique: ",np.unique(predictions,return_counts=True))
+	print("Loaded label test unique: ",np.unique(label_test,return_counts=True))
 	
 	print("Loaded predictions shape: ",predictions.shape)
 	print("Loaded label test shape: ",label_test.shape)
 
-	prediction_unique,prediction_count = np.unique(predictions.argmax(axis=-1),return_counts=True)
-	label_test_unique,label_test_count = np.unique(label_test.argmax(axis=-1),return_counts=True)
+	prediction_unique,prediction_count = np.unique(predictions,return_counts=True)
+	label_test_unique,label_test_count = np.unique(label_test,return_counts=True)
 	print(np.sum(prediction_count[:]))
 	print(np.sum(label_test_count[:-1]))
 	
@@ -258,8 +260,8 @@ def experiment_analyze(small_classes_ignore,dataset='cv',
 
 
 		for t in range(label_test.shape[1]):
-			predictions_t = predictions[:,t,:,:,:]
-			label_test_t = label_test[:,t,:,:,:]
+			predictions_t = predictions.copy()
+			label_test_t = label_test.copy()
 			#skip_crf = model_n<2 #prediction_filename.startswith('model_best_BUnet4ConvLSTM_128fl_')
 			print("###skip_crf###")
 			print(skip_crf)
@@ -580,7 +582,7 @@ def experiments_plot(metrics,experiment_list,dataset,
 	plt.show()
 
 #dataset='lm_optical_clouds'
-dataset='lm'
+#dataset='lm'
 dataset='l2'
 
 #dataset='cv'

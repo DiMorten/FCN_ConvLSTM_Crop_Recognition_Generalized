@@ -98,17 +98,22 @@ class MIMVarLabel_PaddedSeq(MIMVarLabel):
         sample_n = batch['in'].shape[0]
         #print("Label, seq start, seq end",label_date_id,label_date_id-batch_seq_len+1,label_date_id+1)
         if label_date_id+1!=0:
-            if label_date_id in data.padded_dates:
+            if label_date_id in data.ds.padded_dates:
                 unpadded_input = batch['in'][:, :label_date_id+1]
                 len_input_seq = unpadded_input.shape[1]
                 #deb.prints(len_input_seq)
                 input_ = np.zeros(batch['shape']).astype(np.float16)
                 input_[:, -len_input_seq:] = unpadded_input
             else:
+                #print(batch['in'].shape,label_date_id-self.batch_seq_len+1,label_date_id+1)
                 input_ = batch['in'][:, label_date_id-self.batch_seq_len+1:label_date_id+1]
+                ##print(input_.shape)
 
         else:
+            #print(batch['in'].shape,label_date_id-self.batch_seq_len+1,label_date_id+1)
             input_ = batch['in'][:, label_date_id-self.batch_seq_len+1:]
+            ##print(input_.shape)
+
             #print("exception", input_.shape)
         input_ = input_.astype(np.float16)
         input_ = data.addDotyPadded(input_, 

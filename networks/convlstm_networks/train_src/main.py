@@ -110,8 +110,8 @@ deb.prints(args.patch_step_test)
 
 #args.seq_mode = 'var_label'
 
-#args.seq_mode = 'var_label'
-args.seq_mode = 'fixed'
+args.seq_mode = 'var_label'
+#args.seq_mode = 'fixed'
 
 
 if args.seq_mode == 'var_label':
@@ -356,7 +356,7 @@ class Dataset(NetObject):
 		classes = np.unique(self.patches['train']['label'])
 		deb.prints(classes)
 		deb.prints(np.unique(self.patches['train']['label'], return_counts=True))
-		pdb.set_trace()
+		#pdb.set_trace()
 
 ##                labels_val[tmp_val == classes[j]] = labels2new_labels[classes[j]]
 		deb.prints(self.patches['train']['label'].shape)
@@ -2771,14 +2771,17 @@ class NetModel(NetObject):
 				if self.time_measure==True:
 					start_time=time.time()
 				
-				
+				##deb.prints(batch['train']['in'].shape)
 				# set label N to 1
 				#if args.seq_mode=='var' or args.seq_mode=='var_label':
 				batch_seq_len = 12
 				#deb.prints(self.mim)
 				input_ = self.mim.batchTrainPreprocess(batch['train'], data, 
 								label_date_id, batch_seq_len)
-
+				##deb.prints(input_[0].shape)
+				##deb.prints(input_[1].shape)
+				##deb.prints(batch['train']['in'].shape)
+				
 				gt = np.expand_dims(batch['train']['label'].argmax(axis=-1),axis=-1).astype(np.int8)
 				if args.seq_mode=='var' or args.seq_mode=='var_label':
 					gt = gt[:, label_date_id] # N to 1 label is selected
@@ -3170,7 +3173,7 @@ if __name__ == '__main__':
 		deb.prints(data.patches['val']['label'].shape)
 		model.loss_weights=np.load(data.path_patches_bckndfixed+'loss_weights.npy')
 
-	store_patches=True
+	store_patches=False
 	store_patches_each_sample=False
 	if store_patches==True and store_patches_each_sample==True:
 		patchesStorageEachSample = PatchesStorageEachSample(data.path['v'])
