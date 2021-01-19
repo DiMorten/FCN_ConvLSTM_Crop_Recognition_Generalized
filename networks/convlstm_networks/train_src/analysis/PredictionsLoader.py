@@ -244,13 +244,16 @@ class PredictionsLoaderModelNto1FixedSeqVarLabel(PredictionsLoaderModelNto1):
 		batch['in']=np.load(self.path_test+'patches_in.npy',mmap_mode='r') # len is 21
 #		test_label=np.load(self.path_test+'patches_label.npy')
 		self.labeled_dates = 12
-		batch['label']=np.load(self.path_test+'patches_label.npy')[:,-self.labeled_dates:] # may18
+		batch['label']=np.load(self.path_test+'patches_label.npy')
+		deb.prints(batch['label'].shape)
+		#pdb.set_trace()
+		batch['label']=batch['label'][:,-self.labeled_dates:] # may18
 		deb.prints(batch['in'].shape)
 		deb.prints(batch['label'].shape)
 		#pdb.set_trace()
 		
-#		self.mim = MIMVarLabel_PaddedSeq()
-		self.mim = MIMFixed()
+		self.mim = MIMVarLabel_PaddedSeq()
+#		self.mim = MIMFixed()
 
 		data = {'labeled_dates': 12}
 		data['labeled_dates'] = 12
@@ -282,26 +285,27 @@ class PredictionsLoaderModelNto1FixedSeqVarLabel(PredictionsLoaderModelNto1):
 		model_class_n = model_shape[-1]
 		deb.prints(model_shape)
 		deb.prints(model_class_n)
-#		test_predictions = np.zeros_like(batch['label'][...,:-1	], dtype = prediction_dtype)
-		test_predictions = np.zeros((batch['label'].shape[:-1])+(model_class_n,), dtype = prediction_dtype)
+		test_predictions = np.zeros_like(batch['label'][...,:-1	], dtype = prediction_dtype)
+#		test_predictions = np.zeros((batch['label'].shape[:-1])+(model_class_n,), dtype = prediction_dtype)
 		deb.prints(test_predictions.shape)
 
-		pdb.set_trace()
+		#pdb.set_trace()
 		for t_step in range(data['labeled_dates']): # 0 to 11
 			###batch_val_label = batch['label'][:, t_step]
 			#data.patches['test']['label'] = data.patches['test']['label'][:, label_id]
 			##deb.prints(batch_val_label.shape)
 			##deb.prints(t_step-data['labeled_dates'])
-			pdb.set_trace()
+			#pdb.set_trace()
 			input_ = self.mim.batchTrainPreprocess(batch, ds,  
 						label_date_id = t_step-data['labeled_dates']) # tstep is -12 to -1
-			pdb.set_trace()
+			deb.prints(input_[0].shape)
+			#pdb.set_trace()
 			#deb.prints(data.patches['test']['label'].shape)
 			
 			
 			test_predictions[:, t_step]=(model.predict(
 				input_)).astype(prediction_dtype) 
-			pdb.set_trace()
+			#pdb.set_trace()
 		print(" shapes", test_predictions, batch['label'])
 		
 		print("batch['in'][0].shape, batch['label'].shape, test_predictions.shape",batch['in'][0].shape, batch['label'].shape, test_predictions.shape)
@@ -309,18 +313,14 @@ class PredictionsLoaderModelNto1FixedSeqVarLabel(PredictionsLoaderModelNto1):
 		deb.prints(np.unique(test_predictions.argmax(axis=-1), return_counts=True))
 		deb.prints(np.unique(batch['label'].argmax(axis=-1), return_counts=True))
 
-		print(" shapes", test_predictions, batch['label'])
+		
+		#test_predictions = test_predictions.argmax(axis=-1)
+		#batch['label'] = batch['label'].argmax(axis=-1)
+		print( "uniques",np.unique(test_predictions.argmax(axis=-1), return_counts=True),np.unique(batch['label'].argmax(axis=-1), return_counts=True))
 
-		test_predictions = test_predictions.argmax(axis=-1)
-		batch['label'] = batch['label'].argmax(axis=-1)
-		print(" shapes", test_predictions, batch['label'])
-		print( "uniques",np.unique(test_predictions, return_counts=True),np.unique(batch['label'], return_counts=True))
-
-		test_predictions = self.newLabel2labelTranslate(test_predictions, 'new_labels2labels_lm_20171209_S1.pkl')
-		batch['label'] = self.newLabel2labelTranslate(batch['label'], 'new_labels2labels_l2_20191223_S1.pkl')
-		print("End shapes", test_predictions, batch['label'])
-		print(" shapes", test_predictions, batch['label'])
-		print( "uniques",np.unique(test_predictions, return_counts=True),np.unique(batch['label'], return_counts=True))
+		#test_predictions = self.newLabel2labelTranslate(test_predictions, 'new_labels2labels_lm_20171209_S1.pkl')
+		#batch['label'] = self.newLabel2labelTranslate(batch['label'], 'new_labels2labels_l2_20191223_S1.pkl')
+		print( "uniques",np.unique(test_predictions.argmax(axis=-1), return_counts=True),np.unique(batch['label'].argmax(axis=-1), return_counts=True))
 		#pdb.set_trace()
 		del batch['in']
 		return test_predictions, batch['label']

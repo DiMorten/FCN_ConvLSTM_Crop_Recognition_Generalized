@@ -96,6 +96,7 @@ def labels_predictions_filter_transform(label_test,predictions,class_n,
 			important_classes_idx=[0,1,2,6,8,10,12]
 		elif dataset=='l2':
 			important_classes_idx=[0,1,2,6,8,10,12]
+			important_classes_idx=[0,1,2,6,12]
 
 		mode=3
 		if mode==1:

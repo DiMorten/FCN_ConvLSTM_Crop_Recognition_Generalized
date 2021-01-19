@@ -16,7 +16,7 @@ import cv2
 import pdb
 file_id="importantclasses"
 
-from PredictionsLoader import PredictionsLoaderNPY, PredictionsLoaderModel, PredictionsLoaderModelNto1, PredictionsLoaderModelNto1FixedSeqFixedLabel
+from PredictionsLoader import PredictionsLoaderNPY, PredictionsLoaderModel, PredictionsLoaderModelNto1, PredictionsLoaderModelNto1FixedSeqFixedLabel, PredictionsLoaderModelNto1FixedSeqVarLabel
 from colorama import init
 init()
 save_bar_flag=True
@@ -65,15 +65,8 @@ def labels_predictions_filter_transform(label_test,predictions,class_n,
 	predictions=np.reshape(predictions,-1)
 	label_test=label_test.argmax(axis=-1)
 	label_test=np.reshape(label_test,-1)
-#	predictions=predictions[label_test<class_n]
-#	label_test=label_test[label_test<class_n]
-	deb.prints(np.unique(predictions,return_counts=True))
-	predictions=predictions[label_test!=0]
-	label_test=label_test[label_test!=0]	
-	deb.prints(np.unique(predictions,return_counts=True))
-
-	predictions = predictions - 1
-	label_test = label_test - 1
+	predictions=predictions[label_test<class_n]
+	label_test=label_test[label_test<class_n]
 
 	print("========================= Flattened the predictions and labels")	
 	print("Loaded predictions unique: ",np.unique(predictions,return_counts=True))
@@ -94,6 +87,8 @@ def labels_predictions_filter_transform(label_test,predictions,class_n,
 			important_classes_idx=[0,1,2,6,8,10,12]
 		elif dataset=='l2':
 			important_classes_idx=[0,1,2,6,8,10,12]
+			#important_classes_idx=[0,1,2,6,12]
+			
 
 		mode=3
 		if mode==1:
@@ -126,15 +121,17 @@ def labels_predictions_filter_transform(label_test,predictions,class_n,
 					label_test[label_test==idx]=20
 		elif mode==3: # Just take the important classes, no per-date analysis
 			for idx in range(class_n):
-				if idx in class_list and idx not in important_classes_idx:
+				#if idx in class_list and idx not in important_classes_idx:
+				if idx not in important_classes_idx:
+				
 					predictions[predictions==idx]=20
 					label_test[label_test==idx]=20
 
 
 
 
-		if debug>=0: print("Class unique after eliminating non important classes:",np.unique(label_test,return_counts=True))
-		#print("Pred unique after eliminating non important classes:",np.unique(predictions,return_counts=True))
+		if debug>=0: print("Label unique after eliminating non important classes:",np.unique(label_test,return_counts=True))
+		print("Pred unique after eliminating non important classes:",np.unique(predictions,return_counts=True))
 
 
 	if debug>0:
@@ -222,7 +219,9 @@ def experiment_analyze(small_classes_ignore,dataset='cv',
 
 		#predictionsLoader = PredictionsLoaderModel(path_test)
 		#predictionsLoader = PredictionsLoaderModelNto1(path_test)
-		predictionsLoader = PredictionsLoaderModelNto1FixedSeqFixedLabel(path_test, dataset=dataset)
+		predictionsLoader = PredictionsLoaderModelNto1FixedSeqVarLabel(path_test, dataset=dataset)
+
+#		predictionsLoader = PredictionsLoaderModelNto1FixedSeqFixedLabel(path_test, dataset=dataset)
 
 
 		predictions, label_test = predictionsLoader.loadPredictions(model_path)
@@ -462,7 +461,14 @@ def experiments_plot(metrics,experiment_list,dataset,
 			ax2.set_xticklabels(xticklabels)
 			ax3.set_xticks(X+width/2)
 			ax3.set_xticklabels(xticklabels)
-			
+		elif dataset=='l2':
+			xticklabels=['Oct','Nov','Dec','Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep']
+			ax.set_xticks(X+width/2)
+			ax.set_xticklabels(xticklabels)
+			ax2.set_xticks(X+width/2)
+			ax2.set_xticklabels(xticklabels)
+			ax3.set_xticks(X+width/2)
+			ax3.set_xticklabels(xticklabels)
 		elif dataset=='cv': 
 			xlim=[-0.3,8.9]
 			xticklabels=['Oct','Nov','Dec','Jan','Feb','Mar','May','Jun','Jul']
@@ -580,14 +586,14 @@ def experiments_plot(metrics,experiment_list,dataset,
 	plt.show()
 
 #dataset='lm_optical_clouds'
-dataset='lm'
+#dataset='lm'
 dataset='l2'
 
 #dataset='cv'
 #dataset='lm_sarh'
 
 load_metrics=False
-small_classes_ignore=False
+small_classes_ignore=True
 #mode='global'
 mode='each_date'
 if dataset=='cv':
@@ -659,6 +665,9 @@ elif dataset=='l2':
 		]]	
 		experiment_groups=[[
 			'model_best_UUnet4ConvLSTM_doty_fixed_label_len.h5'
+		]]	
+		experiment_groups=[[
+			'model_best_UUnet4ConvLSTM_doty_var_label_valalldates_rep10.h5'
 		]]	
 
 		
@@ -803,68 +812,15 @@ elif dataset=='lm':
 			'model_best_BUnet4ConvLSTM_lem_baseline_adam_focal_alldates.h5'
 		]]
 		#dates_mode = 'less_one'
-		dates_mode = 'less_two'
-		dates_mode = 'less_mar18'
-		
 
-# lm less one date		
-		if dates_mode=='less_one':
-			'''
-			experiment_groups=[[
-				'model_best_BUnet4ConvLSTM_lem_baseline_adam_focal_lessonedate1.h5',
-				'model_best_BUnet4ConvLSTM_lem_baseline_adam_focal_lessonedate2.h5',
-				'model_best_BUnet4ConvLSTM_lem_baseline_adam_focal_lessonedate3.h5',
-				'model_best_BUnet4ConvLSTM_lem_baseline_adam_focal_lessonedate4.h5',
-				'model_best_BUnet4ConvLSTM_lem_baseline_adam_focal_lessonedate5.h5',
-				
-			]]
-			'''		
-			experiment_groups=[[
-				'model_best_BUnet4ConvLSTM_lem_baseline_adam_focal_lessonedate1.h5'],
-				['model_best_BUnet4ConvLSTM_lem_baseline_adam_focal_lessonedate2.h5'],
-				['model_best_BUnet4ConvLSTM_lem_baseline_adam_focal_lessonedate3.h5'],
-				['model_best_BUnet4ConvLSTM_lem_baseline_adam_focal_lessonedate4.h5'],
-				['model_best_BUnet4ConvLSTM_lem_baseline_adam_focal_lessonedate5.h5']
-				
-			]	
-		elif dates_mode == 'less_two':
-			experiment_groups=[['model_best_BUnet4ConvLSTM_less_two_dates.h5']]	
-			#'''
-		elif dates_mode == 'less_mar18':
-			experiment_groups=[[
-				'model_best_BUnet4ConvLSTM_less_mar18_1.h5'],
-				['model_best_BUnet4ConvLSTM_less_mar18_2.h5'],
-				['model_best_BUnet4ConvLSTM_less_mar18_3.h5'],
-				['model_best_BUnet4ConvLSTM_less_mar18_4.h5'],
-				['model_best_BUnet4ConvLSTM_less_mar18_5.h5']
-				
-			]	
-# lm all dates
-		else:
-			'''
-			experiment_groups=[[
-				'model_best_BUnet4ConvLSTM_lem_baseline_adam_focal_alldates.h5',
-				'model_best_BUnet4ConvLSTM_lem_baseline_adam_focal_alldates2.h5',
-				'model_best_BUnet4ConvLSTM_lem_baseline_adam_focal_alldates3.h5',
-				'model_best_BUnet4ConvLSTM_lem_baseline_adam_focal_alldates4.h5',
-				'model_best_BUnet4ConvLSTM_lem_baseline_adam_focal_alldates5.h5',
-				
-			]]
-			'''		
-			experiment_groups=[[
-				'model_best_BUnet4ConvLSTM_lem_baseline_adam_focal_alldates.h5'],
-				['model_best_BUnet4ConvLSTM_lem_baseline_adam_focal_alldates2.h5'],
-				['model_best_BUnet4ConvLSTM_lem_baseline_adam_focal_alldates3.h5'],
-				['model_best_BUnet4ConvLSTM_lem_baseline_adam_focal_alldates4.h5'],
-				['model_best_BUnet4ConvLSTM_lem_baseline_adam_focal_alldates5.h5']
-				
-			]		
-			#'''
 		experiment_groups=[['model_best_var_may18_ext_f1es_pt100.h5']]	
 		experiment_groups=[['model_best_UUnet4ConvLSTM_doty_var_may18_ext_f1es_rep1.h5']]	
 		experiment_groups=[['model_best_UUnet4ConvLSTM_var_may18_ext_f1es_rep1.h5']]	
 		experiment_groups=[['model_best_UUnet4ConvLSTM_doty_var_label_valalldates.h5']]	
 		experiment_groups=[['model_best_UUnet4ConvLSTM_doty_var_label_valalldates_hwtnorm.h5']]	
+		experiment_groups=[[
+					'model_best_UUnet4ConvLSTM_doty_var_label_valalldates_rep10.h5'
+				]]	
 
 
 elif dataset=='lm_optical':

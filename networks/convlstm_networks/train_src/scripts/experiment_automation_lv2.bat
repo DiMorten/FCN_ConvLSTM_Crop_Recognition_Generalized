@@ -23,12 +23,12 @@ set model=UUnet4ConvLSTM_doty
 :: set id=var_label_l2_dummy
 :: set id=var_label_valalldates_nonorm_dummy
 :: set id=fixed_label_len_dec1_dummy
-set id=var_label_valalldates_rep10
+set id=fixed_label_dummy
 
 
 :: set id=fixed_width_sep17_may18_ext_f1es_no13
 
-:: call patches_extract.bat %dataset% %dataSource%
+call patches_extract.bat %dataset% %dataSource%
 :: set id=less_jun18_1
 call experiment_automation.bat %id% %model% %dataset% %dataSource%
 

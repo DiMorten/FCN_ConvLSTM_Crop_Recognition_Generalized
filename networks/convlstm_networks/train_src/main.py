@@ -280,8 +280,8 @@ class Dataset(NetObject):
 		deb.prints(self.patches['test']['in'].shape)
 		deb.prints(self.patches['train']['label'].shape)
 		# for lem2
-		#self.patches['train']['label'] = self.patches['test']['label'].copy()
-		#self.patches['train']['in'] = self.patches['test']['in'].copy() 
+		self.patches['train']['label'] = self.patches['test']['label'].copy()
+		self.patches['train']['in'] = self.patches['test']['in'].copy() 
 
 		self.dataset=None
 		unique,count=np.unique(self.patches['train']['label'],return_counts=True)
@@ -2776,7 +2776,7 @@ class NetModel(NetObject):
 				#if args.seq_mode=='var' or args.seq_mode=='var_label':
 				batch_seq_len = 12
 				#deb.prints(self.mim)
-				input_ = self.mim.batchTrainPreprocess(batch['train'], data, 
+				input_ = self.mim.batchTrainPreprocess(batch['train'], data.ds, 
 								label_date_id, batch_seq_len)
 				##deb.prints(input_[0].shape)
 				##deb.prints(input_[1].shape)
@@ -3133,7 +3133,7 @@ if __name__ == '__main__':
 			
 		print("=== AUGMENTING TRAINING DATA")
 
-		balancing=True
+		balancing=False
 		if balancing==True:
 			if args.seq_mode=='fixed' or args.seq_mode=='fixed_label_len':
 				label_type = 'Nto1'
@@ -3173,7 +3173,7 @@ if __name__ == '__main__':
 		deb.prints(data.patches['val']['label'].shape)
 		model.loss_weights=np.load(data.path_patches_bckndfixed+'loss_weights.npy')
 
-	store_patches=False
+	store_patches=True
 	store_patches_each_sample=False
 	if store_patches==True and store_patches_each_sample==True:
 		patchesStorageEachSample = PatchesStorageEachSample(data.path['v'])
