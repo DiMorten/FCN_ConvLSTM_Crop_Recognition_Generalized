@@ -16,6 +16,7 @@ set dataset=lm
 ::dataSource='SAR'
 set dataSource=SAR
 set model=UUnet4ConvLSTM_doty
+set seq_mode=fixed
 :: set model=UUnet4ConvLSTM
 
 :: ==== EXTRACT PATCHES
@@ -28,9 +29,9 @@ set id=fixed_label_dummy
 
 :: set id=fixed_width_sep17_may18_ext_f1es_no13
 
-call patches_extract.bat %dataset% %dataSource%
+:: call patches_extract.bat %dataset% %dataSource%
 :: set id=less_jun18_1
-call experiment_automation.bat %id% %model% %dataset% %dataSource%
+call experiment_automation.bat %id% %model% %dataset% %dataSource% %seq_mode%
 
 
 :: set id=less_jun18_2

@@ -4,6 +4,7 @@ set model=%2
 set dataset=%3 
 :: could be cv or lem
 set dataSource=%4
+set seq_mode=%5
 
 echo %dataset%
 echo 'cv' 
@@ -69,7 +70,7 @@ set stop_epoch=400
 :: ::model='ConvLSTM_seq2seq_bi' :: russworm bi .
 :: :: ============== EXECUTE EXPERIMENT ===============
 cd ..
-python main.py --stop_epoch=%stop_epoch% -pl=32 -pstr=32 -psts=32 -bstr=16 -bsts=16 -path=%dataset_path% -tl=%sequence_len% -cn=%class_n% -chn=%channel_n% -mdl=%model% -ds=%dataset%
+python main.py --stop_epoch=%stop_epoch% -pl=32 -pstr=32 -psts=32 -bstr=16 -bsts=16 -path=%dataset_path% -tl=%sequence_len% -cn=%class_n% -chn=%channel_n% -mdl=%model% -ds=%dataset% --seq_mode=%seq_mode%
 :: ::python main_hdd.py -pl=32 -pstr=32 -psts=32 -path=$dataset_path -tl=$sequence_len -cn=$class_n -chn=2 -mdl=$model
 :: echo %filename%_%model%_%id%
 

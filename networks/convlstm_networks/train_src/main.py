@@ -111,7 +111,7 @@ deb.prints(args.patch_step_test)
 #args.seq_mode = 'var_label'
 
 #args.seq_mode = 'var_label'
-args.seq_mode = 'fixed'
+#args.seq_mode = 'fixed'
 
 
 if args.seq_mode == 'var_label':
