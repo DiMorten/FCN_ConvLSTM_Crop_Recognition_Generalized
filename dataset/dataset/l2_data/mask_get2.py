@@ -84,31 +84,27 @@ for cnt in contours :
         
 
     if area>200 and np.average(edge_mean) == 0.0:
-        if np.average(mean_train) > 0.0 or coffee_set == 0:
+        if np.average(mean_test_coffee)>0.0:
+            coffee_set = np.random.randint(2)
+            if coffee_set == 0:
+                cv2.fillPoly(lem2_test_mask, pts =[cnt], color=1)
+                train_count = train_count + 1
+            else:
+                cv2.fillPoly(lem2_test_mask, pts =[cnt], color=2) # 2 for testing
+                test_count = test_count + 1                
+        elif np.average(mean_train) > 0.0 or np.average(mean_test) > 0.0:
             cv2.fillPoly(lem2_test_mask, pts =[cnt], color=1)
             train_count = train_count + 1
 #        elif np.average(mean_test) > 0.0:
-        elif np.average(mean_test) > 0.0 or coffee_set == 1:
+        else:
             #cv2.drawContours(lem2_test_mask, cnt, -1, 255, -1)
             cv2.fillPoly(lem2_test_mask, pts =[cnt], color=2) # 2 for testing
             test_count = test_count + 1
             ##print(cnt)
             ##cv2.imwrite('image.png',cnt_mask)
             ##pdb.set_trace()
-        else:
-            rand_n = np.random.randint(4)
-
-            # if coffee class, use it.
-
-            if rand_n == 0:
-                #cv2.drawContours(lem2_test_mask, cnt, -1, 255, -1)
-                cv2.fillPoly(lem2_test_mask, pts =[cnt], color=2) # 2 for testing
-                test_count = test_count + 1
-                ##print(cnt)
-                ##cv2.imwrite('image.png',cnt_mask)
-                ##pdb.set_trace()
 print(train_count, test_count)
-cv2.imwrite('TrainTestMask_large_coffee.tif', lem2_test_mask)
+cv2.imwrite('TrainTestMask_coffee.tif', lem2_test_mask)
 print("np.unique(lem2_test_mask, return_counts=True)", np.unique(lem2_test_mask, return_counts=True))
  
    

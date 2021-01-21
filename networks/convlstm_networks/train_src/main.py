@@ -110,8 +110,8 @@ deb.prints(args.patch_step_test)
 
 #args.seq_mode = 'var_label'
 
-args.seq_mode = 'var_label'
-#args.seq_mode = 'fixed'
+#args.seq_mode = 'var_label'
+args.seq_mode = 'fixed'
 
 
 if args.seq_mode == 'var_label':
@@ -280,8 +280,9 @@ class Dataset(NetObject):
 		deb.prints(self.patches['test']['in'].shape)
 		deb.prints(self.patches['train']['label'].shape)
 		# for lem2
-		self.patches['train']['label'] = self.patches['test']['label'].copy()
-		self.patches['train']['in'] = self.patches['test']['in'].copy() 
+		if self.ds.name =='l2':
+			self.patches['train']['label'] = self.patches['test']['label'].copy()
+			self.patches['train']['in'] = self.patches['test']['in'].copy() 
 
 		self.dataset=None
 		unique,count=np.unique(self.patches['train']['label'],return_counts=True)
@@ -340,8 +341,9 @@ class Dataset(NetObject):
 		f = open("new_labels2labels_"+self.ds.name+"_"+self.ds.im_list[-1]+".pkl", "wb")
 		pickle.dump(new_labels2labels, f)
 		f.close()
+		deb.prints(new_labels2labels)
 
-#		pdb.set_trace()
+		pdb.set_trace()
 
 		self.patches['train']['label'] = self.patches['train']['label']-1
 		self.patches['test']['label'] = self.patches['test']['label']-1
@@ -3064,6 +3066,7 @@ if __name__ == '__main__':
 		ds=LEM()
 	elif dataset=='l2':
 		ds=LEM2()
+	deb.prints(ds)
 	dataSource = SARSource()
 	ds.addDataSource(dataSource)
 	time_delta = ds.getTimeDelta(delta=True,format='days')

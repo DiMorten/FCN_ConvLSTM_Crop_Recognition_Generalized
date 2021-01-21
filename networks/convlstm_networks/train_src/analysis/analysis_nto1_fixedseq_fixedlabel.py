@@ -5,6 +5,7 @@ import numpy as np
 #import h5py
 #import scipy.io as sio
 import numpy as np
+import scipy
 import glob
 import os, sys
 from sklearn.ensemble import RandomForestClassifier
@@ -129,7 +130,7 @@ def labels_predictions_filter_transform(label_test,predictions,class_n,
 					label_test[label_test==idx]=20
 		elif mode==3: # Just take the important classes, no per-date analysis
 			for idx in range(class_n):
-				if idx in class_list and idx not in important_classes_idx:
+				if idx not in important_classes_idx:
 					predictions[predictions==idx]=20
 					label_test[label_test==idx]=20
 
@@ -229,6 +230,7 @@ def experiment_analyze(small_classes_ignore,dataset='cv',
 
 
 		predictions, label_test = predictionsLoader.loadPredictions(model_path)
+		deb.prints(np.unique(np.concatenate((predictions,label_test),axis=0)))
 	
 	#predictions=np.load(prediction_path, allow_pickle=True)
 	#label_test=np.load(path+'labels.npy', allow_pickle=True)
@@ -589,8 +591,12 @@ dataset='l2'
 #dataset='cv'
 #dataset='lm_sarh'
 
+#load images
+path_img="../../../../dataset/dataset/"+dataset+"_data/patches_bckndfixed/test/patches_in.npy"
+imgs_in = np.load(path_img,mmap_mode='r')
+
 load_metrics=False
-small_classes_ignore=False
+small_classes_ignore=True
 #mode='global'
 mode='each_date'
 if dataset=='cv':
