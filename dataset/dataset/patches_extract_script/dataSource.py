@@ -309,10 +309,11 @@ class Dataset(object):
 		np.set_printoptions(suppress=False)
 		self.dotys_sin_cos = dotys_sin_cos
 		return np.asarray(dotys), dotys_sin_cos
-	def dotyReplicateSamples(self, sample_n):#,batch['label'].shape[0]
-		self.dotys_sin_cos = self.dotys_sin_cos
+	def dotyReplicateSamples(self, sample_n=16):#,batch['label'].shape[0]
+		#self.dotys_sin_cos = self.dotys_sin_cos
 		self.dotys_sin_cos = np.expand_dims(self.dotys_sin_cos,axis=0) # add batch dimension
 		self.dotys_sin_cos = np.repeat(self.dotys_sin_cos, sample_n, axis=0)
+		deb.prints(self.dotys_sin_cos.shape)
 		return self.dotys_sin_cos
 	def setDotyFlag(self, doty_flag):
 		self.doty_flag = doty_flag

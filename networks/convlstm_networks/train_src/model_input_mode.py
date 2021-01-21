@@ -21,6 +21,7 @@ class MIMFixed(ModelInputMode):
         batch['test']['shape'] = (batch['test']['size'], model_t_len) + data.patches['test']['in'].shape[2:]
 
         deb.prints(batch['train']['shape'])
+        data.ds.dotyReplicateSamples()
         #data.labeled_dates = 12
 ##        deb.prints(data.labeled_dates)
 #        min_seq_len = t_len - data.labeled_dates + 1 # 20 - 12 + 1 = 9

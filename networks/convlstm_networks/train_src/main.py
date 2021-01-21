@@ -280,9 +280,21 @@ class Dataset(NetObject):
 		deb.prints(self.patches['test']['in'].shape)
 		deb.prints(self.patches['train']['label'].shape)
 		# for lem2
-		if self.ds.name =='l2':
-			self.patches['train']['label'] = self.patches['test']['label'].copy()
-			self.patches['train']['in'] = self.patches['test']['in'].copy() 
+		#if self.ds.name =='l2':
+		#	self.patches['train']['label'] = self.patches['test']['label'].copy()
+		#	self.patches['train']['in'] = self.patches['test']['in'].copy() 
+		if self.ds.name == 'lm':
+			self.patches['train']['in'] = np.concatenate((self.patches['train']['in'],
+							self.patches['test']['in']), axis=0)
+			self.patches['train']['label'] = np.concatenate((self.patches['train']['label'],
+							self.patches['test']['label']), axis=0)
+
+			self.patches['test']['in'] = np.expand_dims(
+							np.zeros(self.patches['test']['in'].shape[1:]),
+							axis = 0)
+			self.patches['test']['label'] = np.expand_dims(
+							np.zeros(self.patches['test']['label'].shape[1:]),
+							axis = 0)
 
 		self.dataset=None
 		unique,count=np.unique(self.patches['train']['label'],return_counts=True)
@@ -343,7 +355,7 @@ class Dataset(NetObject):
 		f.close()
 		deb.prints(new_labels2labels)
 
-		pdb.set_trace()
+		##pdb.set_trace()
 
 		self.patches['train']['label'] = self.patches['train']['label']-1
 		self.patches['test']['label'] = self.patches['test']['label']-1
@@ -2743,6 +2755,7 @@ class NetModel(NetObject):
 									model_t_len=model_t_len)
 		data = self.mim.valLabelSelect(data)
 		data.doty_flag=True
+		data.ds.doty_flag=True
 		#==============================START TRAIN/TEST LOOP============================#
 		for epoch in range(self.epochs):
 
@@ -3136,7 +3149,7 @@ if __name__ == '__main__':
 			
 		print("=== AUGMENTING TRAINING DATA")
 
-		balancing=False
+		balancing=True
 		if balancing==True:
 			if args.seq_mode=='fixed' or args.seq_mode=='fixed_label_len':
 				label_type = 'Nto1'
