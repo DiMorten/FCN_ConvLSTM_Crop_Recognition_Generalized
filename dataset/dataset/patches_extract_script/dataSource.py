@@ -246,7 +246,7 @@ class OpticalSourceWithClouds(OpticalSource):
 		self.name='OpticalSourceWithClouds'
 
 class Dataset(object):
-	def __init__(self,path,im_h,im_w,class_n,class_list,name,padded_dates):
+	def __init__(self,path,im_h,im_w,class_n,class_list,name,padded_dates,seq_mode,seq_date):
 		self.path=Path(path)
 		self.class_n=class_n
 		self.im_h=im_h
@@ -254,6 +254,8 @@ class Dataset(object):
 		self.class_list=class_list
 		self.name=name
 		self.padded_dates=padded_dates
+		self.seq_mode=seq_mode
+		self.seq_date=seq_date
 	@abstractmethod
 	def addDataSource(self,dataSource):
 		pass
@@ -387,7 +389,7 @@ class CampoVerde(Dataset):
 			self.label_list=self.im_list.copy()
 		self.t_len=len(self.im_list)
 class LEM(Dataset):
-	def __init__(self):
+	def __init__(self, seq_mode, seq_date):
 		name='lm'
 		path="../lm_data/"
 		class_n=15
@@ -395,7 +397,7 @@ class LEM(Dataset):
 		im_h=8484
 		class_list = ['Background','Soybean','Maize','Cotton','Coffee','Beans','Sorghum','Millet','Eucalyptus','Pasture/Grass','Hay','Cerrado','Conversion Area','Soil','Not Identified']
 		padded_dates = [-12, -11]
-		super().__init__(path,im_h,im_w,class_n,class_list,name,padded_dates)
+		super().__init__(path,im_h,im_w,class_n,class_list,name,padded_dates,seq_mode,seq_date)
 
 	def addDataSource(self,dataSource):
 		deb.prints(dataSource.name)
@@ -430,29 +432,32 @@ class LEM(Dataset):
 			#	'20170612_S1', '20170706_S1', '20170811_S1', '20170916_S1', '20171010_S1', '20171115_S1', 
 			#	'20171209_S1', '20180114_S1', '20180219_S1', '20180315_S1', '20180420_S1', '20180514_S1',
 			#	'20180619_S1']
-			if mode=='var':
+			if self.seq_mode=='var':
 				self.im_list=['20160927_S1','20161015_S1','20161120_S1','20161214_S1','20170119_S1','20170212_S1','20170308_S1',
 					'20170413_S1','20170519_S1',
 					'20170612_S1', '20170706_S1', '20170811_S1', '20170916_S1', '20171010_S1', '20171115_S1', 
 					'20171209_S1', '20180114_S1', '20180219_S1', '20180315_S1', '20180420_S1', '20180514_S1',
 					]
-			elif mode=='fixed':
+			elif self.seq_mode=='fixed':
 				# 12 len fixed. label -5
-				self.im_list=['20170308_S1',
-					'20170413_S1','20170519_S1',
-					'20170612_S1', '20170706_S1', '20170811_S1', '20170916_S1', '20171010_S1', '20171115_S1', 
-					'20171209_S1', '20180114_S1', '20180219_S1']
+				elif self.seq_date=='feb':					
+					self.im_list=['20170308_S1',
+						'20170413_S1','20170519_S1',
+						'20170612_S1', '20170706_S1', '20170811_S1', '20170916_S1', '20171010_S1', '20171115_S1', 
+						'20171209_S1', '20180114_S1', '20180219_S1']
 				# 12 len fixed. label -4
-				self.im_list=[
-					'20170413_S1','20170519_S1',
-					'20170612_S1', '20170706_S1', '20170811_S1', '20170916_S1', '20171010_S1', '20171115_S1', 
-					'20171209_S1', '20180114_S1', '20180219_S1', '20180315_S1']
+				elif self.seq_date=='mar':					
+					self.im_list=[
+						'20170413_S1','20170519_S1',
+						'20170612_S1', '20170706_S1', '20170811_S1', '20170916_S1', '20171010_S1', '20171115_S1', 
+						'20171209_S1', '20180114_S1', '20180219_S1', '20180315_S1']
 				# 12 len fixed. label -7
-				self.im_list=['20170119_S1','20170212_S1','20170308_S1',
-					'20170413_S1','20170519_S1',
-					'20170612_S1', '20170706_S1', '20170811_S1', '20170916_S1', '20171010_S1', '20171115_S1', 
-					'20171209_S1'
-					]
+				elif self.seq_date=='dec':
+					self.im_list=['20170119_S1','20170212_S1','20170308_S1',
+						'20170413_S1','20170519_S1',
+						'20170612_S1', '20170706_S1', '20170811_S1', '20170916_S1', '20171010_S1', '20171115_S1', 
+						'20171209_S1'
+						]
 
 			self.label_list=self.im_list.copy()
 
@@ -477,7 +482,7 @@ class LEM(Dataset):
 		deb.prints(self.t_len)
 
 class LEM2(Dataset):
-	def __init__(self):
+	def __init__(self, seq_mode, seq_date):
 		name='l2'
 		path="../l2_data/"
 		class_n=15
@@ -485,7 +490,7 @@ class LEM2(Dataset):
 		im_h=8484
 		class_list = ['Background','Soybean','Maize','Cotton','Coffee','Beans','Sorghum','Millet','Eucalyptus','Pasture/Grass','Hay','Cerrado','Conversion Area','Soil','Not Identified']
 		padded_dates = []
-		super().__init__(path,im_h,im_w,class_n,class_list,name,padded_dates)
+		super().__init__(path,im_h,im_w,class_n,class_list,name,padded_dates,seq_mode,seq_date)
 
 	def addDataSource(self,dataSource):
 		deb.prints(dataSource.name)

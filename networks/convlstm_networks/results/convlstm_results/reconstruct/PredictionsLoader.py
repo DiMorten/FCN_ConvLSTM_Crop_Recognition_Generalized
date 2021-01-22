@@ -19,7 +19,9 @@ from keras import metrics
 import sys
 import glob
 import pdb
-
+sys.path.append('../../../train_src/')
+import deb
+import pickle
 class PredictionsLoader():
 	def __init__(self):
 		pass
@@ -46,3 +48,36 @@ class PredictionsLoaderModel(PredictionsLoader):
 		print("Test predictions dtype",test_predictions.dtype)
 		del test_in
 		return test_predictions, test_label, model
+	def loadModel(self,path_model):
+		model=load_model(path_model, compile=False)
+		return model
+	def newLabel2labelTranslate(self, label, filename, bcknd_flag=True):
+		print("Entering newLabel2labelTranslate")
+		label = label.astype(np.uint8)
+		# bcknd to 0
+		deb.prints(np.unique(label,return_counts=True))
+		deb.prints(np.unique(label)[-1])
+		if bcknd_flag == True:
+			label[label==np.unique(label)[-1]] = 255 # this -1 will be different for each dataset
+		deb.prints(np.unique(label,return_counts=True))
+		label = label + 1
+		
+		deb.prints(np.unique(label,return_counts=True))
+
+		# translate 
+		f = open(filename, "rb")
+		new_labels2labels = pickle.load(f)
+		deb.prints(new_labels2labels)
+
+		classes = np.unique(label)
+		deb.prints(classes)
+		translated_label = label.copy()
+		for j in range(len(classes)):
+			print(classes[j])
+			print("Translated",new_labels2labels[classes[j]])
+			translated_label[label == classes[j]] = new_labels2labels[classes[j]]
+
+		# bcknd to last
+		##label = label - 1 # bcknd is 255
+		##label[label==255] = np.unique(label)[-2]
+		return translated_label 

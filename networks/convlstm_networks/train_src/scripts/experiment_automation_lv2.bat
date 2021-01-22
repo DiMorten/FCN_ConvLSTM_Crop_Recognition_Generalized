@@ -9,14 +9,15 @@
 
 
 ::dataset=cv
-:: set dataset=l2
 set dataset=lm
+:: set dataset=lm
 
 ::::dataSource='OpticalWithClouds'
 ::dataSource='SAR'
 set dataSource=SAR
 set model=UUnet4ConvLSTM_doty
 set seq_mode=fixed
+set seq_date=dec
 :: set model=UUnet4ConvLSTM
 
 :: ==== EXTRACT PATCHES
@@ -24,12 +25,12 @@ set seq_mode=fixed
 :: set id=var_label_l2_dummy
 :: set id=var_label_valalldates_nonorm_dummy
 :: set id=fixed_label_len_dec1_dummy
-set id=fixed_label_dummy
+set id=fixed_label_%seq_mode%_%seq_date%
 
 
 :: set id=fixed_width_sep17_may18_ext_f1es_no13
 
-:: call patches_extract.bat %dataset% %dataSource%
+call patches_extract.bat %dataset% %dataSource% %seq_mode% %seq_date%
 :: set id=less_jun18_1
 call experiment_automation.bat %id% %model% %dataset% %dataSource% %seq_mode%
 

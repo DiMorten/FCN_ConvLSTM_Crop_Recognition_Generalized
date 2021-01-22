@@ -54,8 +54,12 @@ class PredictionsLoaderModel(PredictionsLoader):
 		print("Test predictions dtype",test_predictions.dtype)
 		del test_in
 		return test_predictions, test_label
+	def loadModel(self,path_model):
+		model=load_model(path_model, compile=False)
+		return model
 
-class PredictionsLoaderModelNto1(PredictionsLoader):
+
+class PredictionsLoaderModelNto1(PredictionsLoaderModel):
 	def __init__(self, path_test, dataset):
 		self.path_test=path_test
 		self.dataset=dataset

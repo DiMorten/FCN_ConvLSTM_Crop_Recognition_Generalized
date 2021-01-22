@@ -14,6 +14,7 @@ sys.path.append('../../../train_src/')
 from model_input_mode import MIMFixed, MIMVarLabel, MIMVarSeqLabel, MIMVarLabel_PaddedSeq, MIMFixedLabelAllLabels
 sys.path.append('../../../../../dataset/dataset/patches_extract_script/')
 from dataSource import DataSource, SARSource, OpticalSource, Dataset, LEM, LEM2, CampoVerde, OpticalSourceWithClouds, Humidity
+from sklearn.metrics import confusion_matrix,f1_score,accuracy_score,classification_report,recall_score,precision_score
 
 parser = argparse.ArgumentParser(description='')
 parser.add_argument('-ds', '--dataset', dest='dataset',
@@ -229,9 +230,9 @@ full_ims_test = np.load(full_path+'full_ims_test.npy')
 full_label_test = np.load(full_path+'full_label_test.npy').astype(np.uint8)
 
 # convert labels; background is last
-class_n=len(np.unique(full_label_test))-1
-full_label_test=full_label_test-1
-full_label_test[full_label_test==255]=class_n
+#class_n=len(np.unique(full_label_test))-1
+#full_label_test=full_label_test-1
+#full_label_test[full_label_test==255]=class_n
 
 print(full_ims_test.shape)
 print(full_label_test.shape)
@@ -274,53 +275,98 @@ print(np.unique(full_label_test,return_counts=True))
 
 sequence_len, row, col, bands = full_ims_test.shape
 #pdb.set_trace()
-prediction_rebuilt=np.ones((sequence_len,row,col)).astype(np.uint8)*255
+
+label_rebuilt=full_label_test[-1]
+lm_labeled_dates = ['20170612', '20170706', '20170811', '20170916', '20171010', '20171115', 
+					'20171209', '20180114', '20180219', '20180315', '20180420', '20180514']
+l2_labeled_dates = ['20191012','20191117','20191223','20200116','20200221','20200316',
+					'20200421','20200515','20200620','20200714','20200819','20200912']
+
+#dec
+lm_date = lm_labeled_dates[6]
+l2_date = l2_labeled_dates[2]
 
 
-print("stride", stride)
-print(len(range(patch_size//2,row-patch_size//2,stride)))
-print(len(range(patch_size//2,col-patch_size//2,stride)))
-for m in range(patch_size//2,row-patch_size//2,stride): 
-	for n in range(patch_size//2,col-patch_size//2,stride):
-		patch_mask = mask_pad[m-patch_size//2:m+patch_size//2 + patch_size%2,
-					n-patch_size//2:n+patch_size//2 + patch_size%2]
-		if np.any(patch_mask==2):
-			patch = {}			
-			patch['in'] = full_ims_test[:,m-patch_size//2:m+patch_size//2 + patch_size%2,
-						n-patch_size//2:n+patch_size//2 + patch_size%2]
-			patch['in'] = np.expand_dims(patch['in'], axis = 0)
-			#patch = patch.reshape((1,patch_size,patch_size,bands))
-
-
-			input_ = mim.batchTrainPreprocess(patch, ds,  
-						label_date_id = -1) # tstep is -12 to -1
-			#print(input_[0].shape)
-			#pdb.set_trace()
-			pred_cl = model.predict(input_).argmax(axis=-1)
-	#		print(pred_cl.shape)
-
-			#_, x, y = pred_cl.shape
-				
-			prediction_rebuilt[:,m-stride//2:m+stride//2,n-stride//2:n+stride//2] = pred_cl[:,overlap//2:x-overlap//2,overlap//2:y-overlap//2]
-del full_ims_test
-label_rebuilt=full_label_test.copy()
 
 del full_label_test
-if add_padding_flag==True:
-	prediction_rebuilt=prediction_rebuilt[:,overlap//2:-step_row,overlap//2:-step_col]
+mosaic_flag = False
+if mosaic_flag == True:
+	#prediction_rebuilt=np.ones((row,col)).astype(np.uint8)*255
+	prediction_rebuilt=np.zeros((row,col)).astype(np.uint8)
 
-print("---- pad was removed")
 
-print(prediction_rebuilt.shape, mask.shape, label_rebuilt.shape)
+	print("stride", stride)
+	print(len(range(patch_size//2,row-patch_size//2,stride)))
+	print(len(range(patch_size//2,col-patch_size//2,stride)))
+	for m in range(patch_size//2,row-patch_size//2,stride): 
+		for n in range(patch_size//2,col-patch_size//2,stride):
+			patch_mask = mask_pad[m-patch_size//2:m+patch_size//2 + patch_size%2,
+						n-patch_size//2:n+patch_size//2 + patch_size%2]
+			if np.any(patch_mask==2):
+				patch = {}			
+				patch['in'] = full_ims_test[:,m-patch_size//2:m+patch_size//2 + patch_size%2,
+							n-patch_size//2:n+patch_size//2 + patch_size%2]
+				patch['in'] = np.expand_dims(patch['in'], axis = 0)
+				#patch = patch.reshape((1,patch_size,patch_size,bands))
+
+
+				input_ = mim.batchTrainPreprocess(patch, ds,  
+							label_date_id = -1) # tstep is -12 to -1
+				#print(input_[0].shape)
+				#pdb.set_trace()
+				pred_cl = model.predict(input_).argmax(axis=-1)
+				#print(pred_cl.shape)
+	#			pdb.set_trace()
+				_, x, y = pred_cl.shape
+					
+				prediction_rebuilt[m-stride//2:m+stride//2,n-stride//2:n+stride//2] = pred_cl[:,overlap//2:x-overlap//2,overlap//2:y-overlap//2]
+	del full_ims_test
+
+	if add_padding_flag==True:
+		prediction_rebuilt=prediction_rebuilt[:,overlap//2:-step_row,overlap//2:-step_col]
+
+	print("---- pad was removed")
+
+	print(prediction_rebuilt.shape, mask.shape, label_rebuilt.shape)
+
+	print(np.unique(label_rebuilt, return_counts=True))
+	print(np.unique(prediction_rebuilt, return_counts=True))
+
+	prediction_rebuilt=np.reshape(prediction_rebuilt,-1)
+#	label_rebuilt=np.reshape(label_rebuilt,-1)
+#	mask = np.reshape(mask,-1)
+
+	translate_label_path = '../../../train_src/'
+	prediction_rebuilt = predictionsLoader.newLabel2labelTranslate(prediction_rebuilt, 
+			translate_label_path + 'new_labels2labels_lm_'+lm_date+'_S1.pkl',
+			bcknd_flag=False)
+	
+
+	np.save('prediction_rebuilt_'+l2_date+'.npy',prediction_rebuilt)
+else:
+	prediction_rebuilt = np.load('prediction_rebuilt_'+l2_date+'.npy')
+	print(np.unique(prediction_rebuilt, return_counts=True))
+	label_rebuilt=np.reshape(label_rebuilt,-1)
+	mask = np.reshape(mask,-1)
 
 # ========== metrics get =======#
+def my_f1_score(label,prediction):
+	f1_values=f1_score(label,prediction,average=None)
+
+	#label_unique=np.unique(label) # [0 1 2 3 5]
+	#prediction_unique=np.unique(prediction.argmax(axis-1)) # [0 1 2 3 4]
+	#[ 0.8 0.8 0.8 0 0.7 0.7]
+
+	f1_value=np.sum(f1_values)/len(np.unique(label))
+
+	#print("f1_values",f1_values," f1_value:",f1_value)
+	return f1_value
+
 def metrics_get(label, predictions, mask):
 
-	print("label predictions shape",label.shape,predictions.shape)
+
+
 	
-	predictions=np.reshape(predictions,-1)
-	label=np.reshape(label,-1)
-	mask = np.reshape(mask,-1)
 	print("label predictions shape",label.shape,predictions.shape)
 	predictions=predictions[mask==2]
 	label=label[mask==2]
@@ -329,10 +375,17 @@ def metrics_get(label, predictions, mask):
 	predictions=predictions[label!=14]
 	label=label[label!=14]	
 	print("label predictions shape",label.shape,predictions.shape)
-
+	metrics = {}
 	metrics['f1_score']=my_f1_score(label,predictions) # [0.9 0.9 0.4 0.5] [1 2 3 4 5]
+	metrics['f1_score_noavg']=f1_score(label,predictions,average=None) # [0.9 0.9 0.4 0.5] [1 2 3 4 5]
+	
+	metrics['overall_acc']=accuracy_score(label,predictions)
+	return metrics
+
+		
 metrics = metrics_get(label_rebuilt, prediction_rebuilt, mask)
 print(metrics)
+pdb.set_trace()
 # everything outside mask is 255
 for t_step in range(sequence_len):
 	label_rebuilt[t_step][mask==0]=255
