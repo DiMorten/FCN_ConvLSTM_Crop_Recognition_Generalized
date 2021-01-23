@@ -389,7 +389,7 @@ class CampoVerde(Dataset):
 			self.label_list=self.im_list.copy()
 		self.t_len=len(self.im_list)
 class LEM(Dataset):
-	def __init__(self, seq_mode, seq_date):
+	def __init__(self, seq_mode=None, seq_date=None):
 		name='lm'
 		path="../lm_data/"
 		class_n=15
@@ -432,33 +432,84 @@ class LEM(Dataset):
 			#	'20170612_S1', '20170706_S1', '20170811_S1', '20170916_S1', '20171010_S1', '20171115_S1', 
 			#	'20171209_S1', '20180114_S1', '20180219_S1', '20180315_S1', '20180420_S1', '20180514_S1',
 			#	'20180619_S1']
-			if self.seq_mode=='var':
-				self.im_list=['20160927_S1','20161015_S1','20161120_S1','20161214_S1','20170119_S1','20170212_S1','20170308_S1',
+			im_list_full = ['20160927_S1','20161015_S1','20161120_S1','20161214_S1','20170119_S1','20170212_S1','20170308_S1',
 					'20170413_S1','20170519_S1',
 					'20170612_S1', '20170706_S1', '20170811_S1', '20170916_S1', '20171010_S1', '20171115_S1', 
 					'20171209_S1', '20180114_S1', '20180219_S1', '20180315_S1', '20180420_S1', '20180514_S1',
 					]
+			if self.seq_mode=='var':
+				self.im_list=im_list_full.copy()
 			elif self.seq_mode=='fixed':
 				# 12 len fixed. label -5
+				if self.seq_date=='jan':
+					self.im_list=im_list_full[-5-12+1:-5+1]
+					assert len(self.im_list)==12
+					assert self.im_list[-1]=='20180114_S1'
 				elif self.seq_date=='feb':					
-					self.im_list=['20170308_S1',
-						'20170413_S1','20170519_S1',
-						'20170612_S1', '20170706_S1', '20170811_S1', '20170916_S1', '20171010_S1', '20171115_S1', 
-						'20171209_S1', '20180114_S1', '20180219_S1']
+					self.im_list=im_list_full[-4-12+1:-4+1]
+					assert len(self.im_list)==12
+					assert self.im_list[-1]=='20180219_S1'
+#					self.im_list=['20170308_S1',
+#						'20170413_S1','20170519_S1',
+#						'20170612_S1', '20170706_S1', '20170811_S1', '20170916_S1', '20171010_S1', '20171115_S1', 
+#						'20171209_S1', '20180114_S1', '20180219_S1']
 				# 12 len fixed. label -4
 				elif self.seq_date=='mar':					
-					self.im_list=[
-						'20170413_S1','20170519_S1',
-						'20170612_S1', '20170706_S1', '20170811_S1', '20170916_S1', '20171010_S1', '20171115_S1', 
-						'20171209_S1', '20180114_S1', '20180219_S1', '20180315_S1']
-				# 12 len fixed. label -7
+					self.im_list=im_list_full[-3-12+1:-3+1]
+					assert len(self.im_list)==12
+					assert self.im_list[-1]=='20180315_S1'
+
+#					self.im_list=[
+#						'20170413_S1','20170519_S1',
+#						'20170612_S1', '20170706_S1', '20170811_S1', '20170916_S1', '20171010_S1', '20171115_S1', 
+#						'20171209_S1', '20180114_S1', '20180219_S1', '20180315_S1']
+				elif self.seq_date=='apr':					
+					self.im_list=im_list_full[-2-12+1:-2+1]
+					assert len(self.im_list)==12
+					assert self.im_list[-1]=='20180420_S1'
+
+				elif self.seq_date=='may':					
+					self.im_list=im_list_full[-1-12+1:-1+1]
+					assert len(self.im_list)==12
+					assert self.im_list[-1]=='20180514_S1'
+
+				elif self.seq_date=='jun':					
+					self.im_list=im_list_full[-12-12+1:-12+1]
+					assert len(self.im_list)==12
+					assert self.im_list[-1]=='20170612_S1'
+
+				elif self.seq_date=='jul':					
+					self.im_list=im_list_full[-11-12+1:-11+1]
+					assert len(self.im_list)==12
+					assert self.im_list[-1]=='20170706_S1'
+
+				elif self.seq_date=='aug':					
+					self.im_list=im_list_full[-10-12+1:-10+1]
+					assert len(self.im_list)==12
+					assert self.im_list[-1]=='20170811_S1'
+
+				elif self.seq_date=='sep':					
+					self.im_list=im_list_full[-9-12+1:-9+1]
+					assert len(self.im_list)==12
+					assert self.im_list[-1]=='20170916_S1'
+
+				elif self.seq_date=='oct':					
+					self.im_list=im_list_full[-8-12+1:-8+1]
+					assert len(self.im_list)==12
+					assert self.im_list[-1]=='20171010_S1'
+				elif self.seq_date=='nov':					
+					self.im_list=im_list_full[-7-12+1:-7+1]
+					assert len(self.im_list)==12
+					assert self.im_list[-1]=='20171115_S1'
 				elif self.seq_date=='dec':
 					self.im_list=['20170119_S1','20170212_S1','20170308_S1',
 						'20170413_S1','20170519_S1',
 						'20170612_S1', '20170706_S1', '20170811_S1', '20170916_S1', '20171010_S1', '20171115_S1', 
 						'20171209_S1'
 						]
-
+			
+			print("self.im_list",self.im_list)
+			print(self.seq_mode, self.seq_date)
 			self.label_list=self.im_list.copy()
 
 		elif self.dataSource.name == 'OpticalSource':
@@ -482,7 +533,7 @@ class LEM(Dataset):
 		deb.prints(self.t_len)
 
 class LEM2(Dataset):
-	def __init__(self, seq_mode, seq_date):
+	def __init__(self, seq_mode=None, seq_date=None):
 		name='l2'
 		path="../l2_data/"
 		class_n=15

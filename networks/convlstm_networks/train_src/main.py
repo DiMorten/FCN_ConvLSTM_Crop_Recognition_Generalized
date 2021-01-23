@@ -94,6 +94,9 @@ parser.add_argument('-ste', '--stop_epoch', dest='stop_epoch',
 					type=int, default=-1, help='Stop epoch. If 0, no fixed stop epoch.')
 parser.add_argument('-seq_mode', '--seq_mode', dest='seq_mode',
 					type=str, default='fixed', help='Sequence len type. variable or fixed')
+parser.add_argument('-seq_date', '--seq_date', dest='seq_date',
+					type=str, default='dec', help='seq_date')
+
 parser.add_argument('-ds', '--dataset', dest='dataset',
 					type=str, default='lm', help='Dataset name')
 
@@ -111,7 +114,7 @@ deb.prints(args.patch_step_test)
 #args.seq_mode = 'var_label'
 
 #args.seq_mode = 'var_label'
-#args.seq_mode = 'fixed'
+args.seq_mode = 'fixed'
 
 
 if args.seq_mode == 'var_label':
@@ -3076,9 +3079,9 @@ if __name__ == '__main__':
 #	dataset='l2'
 	#dataset='l2'
 	if dataset=='lm':
-		ds=LEM()
+		ds=LEM(args.seq_mode, args.seq_date)
 	elif dataset=='l2':
-		ds=LEM2()
+		ds=LEM2(args.seq_mode, args.seq_date)
 	deb.prints(ds)
 	dataSource = SARSource()
 	ds.addDataSource(dataSource)

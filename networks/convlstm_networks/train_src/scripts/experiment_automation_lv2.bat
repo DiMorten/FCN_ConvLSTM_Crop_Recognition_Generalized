@@ -17,59 +17,61 @@ set dataset=lm
 set dataSource=SAR
 set model=UUnet4ConvLSTM_doty
 set seq_mode=fixed
-set seq_date=dec
-:: set model=UUnet4ConvLSTM
 
-:: ==== EXTRACT PATCHES
-:: set id=var_label_valalldates_rep
-:: set id=var_label_l2_dummy
-:: set id=var_label_valalldates_nonorm_dummy
-:: set id=fixed_label_len_dec1_dummy
+
+set seq_date=aug
+
 set id=fixed_label_%seq_mode%_%seq_date%
-
-
-:: set id=fixed_width_sep17_may18_ext_f1es_no13
-
 call patches_extract.bat %dataset% %dataSource% %seq_mode% %seq_date%
-:: set id=less_jun18_1
-call experiment_automation.bat %id% %model% %dataset% %dataSource% %seq_mode%
+call experiment_automation.bat %id% %model% %dataset% %dataSource% %seq_mode% %seq_date%
 
+set seq_date=sep
 
-:: set id=less_jun18_2
-:: call experiment_automation.bat %id% %model% %dataset% %dataSource%
-:: set id=less_jun18_3
-:: call experiment_automation.bat %id% %model% %dataset% %dataSource%
-:: set id=less_jun18_4
-:: call experiment_automation.bat %id% %model% %dataset% %dataSource%
-:: set id=less_jun18_5
-:: call experiment_automation.bat %id% %model% %dataset% %dataSource%
+set id=fixed_label_%seq_mode%_%seq_date%
+call patches_extract.bat %dataset% %dataSource% %seq_mode% %seq_date%
+call experiment_automation.bat %id% %model% %dataset% %dataSource% %seq_mode% %seq_date%
 
-:: set id=lem_baseline_adam_focal_lessonedate1
-:: call experiment_automation.bat %id% %model% %dataset% %dataSource%
+set seq_date=oct
 
-:: set id=lem_baseline_adam_focal_lessonedate2
-:: call experiment_automation.bat %id% %model% %dataset% %dataSource%
+set id=fixed_label_%seq_mode%_%seq_date%
+call patches_extract.bat %dataset% %dataSource% %seq_mode% %seq_date%
+call experiment_automation.bat %id% %model% %dataset% %dataSource% %seq_mode% %seq_date%
 
-:: set id=lem_baseline_adam_focal_lessonedate3
-:: call experiment_automation.bat %id% %model% %dataset% %dataSource%
+set seq_date=nov
 
-:: set id=lem_baseline_adam_focal_lessonedate4
-:: call experiment_automation.bat %id% %model% %dataset% %dataSource%
+set id=fixed_label_%seq_mode%_%seq_date%
+call patches_extract.bat %dataset% %dataSource% %seq_mode% %seq_date%
+call experiment_automation.bat %id% %model% %dataset% %dataSource% %seq_mode% %seq_date%
 
-:: set id=lem_baseline_adam_focal_lessonedate5
-:: call experiment_automation.bat %id% %model% %dataset% %dataSource%
+set seq_date=dec
 
-:: set id=lem_baseline_adam_focal_alldates2
-:: call experiment_automation.bat %id% %model% %dataset% %dataSource%
+set id=fixed_label_%seq_mode%_%seq_date%
+call patches_extract.bat %dataset% %dataSource% %seq_mode% %seq_date%
+call experiment_automation.bat %id% %model% %dataset% %dataSource% %seq_mode% %seq_date%
 
-:: set id=lem_baseline_adam_focal_alldates3
-:: call experiment_automation.bat %id% %model% %dataset% %dataSource%
+set seq_date=jan
 
-:: set id=lem_baseline_adam_focal_alldates4
-:: call experiment_automation.bat %id% %model% %dataset% %dataSource%
+set id=fixed_label_%seq_mode%_%seq_date%
+call patches_extract.bat %dataset% %dataSource% %seq_mode% %seq_date%
+call experiment_automation.bat %id% %model% %dataset% %dataSource% %seq_mode% %seq_date%
 
-:: set id=lem_baseline_adam_focal_alldates5
-:: call experiment_automation.bat %id% %model% %dataset% %dataSource%
+set seq_date=feb
+
+set id=fixed_label_%seq_mode%_%seq_date%
+call patches_extract.bat %dataset% %dataSource% %seq_mode% %seq_date%
+call experiment_automation.bat %id% %model% %dataset% %dataSource% %seq_mode% %seq_date%
+
+set seq_date=mar
+
+set id=fixed_label_%seq_mode%_%seq_date%
+call patches_extract.bat %dataset% %dataSource% %seq_mode% %seq_date%
+call experiment_automation.bat %id% %model% %dataset% %dataSource% %seq_mode% %seq_date%
+
+set seq_date=may
+
+set id=fixed_label_%seq_mode%_%seq_date%
+call patches_extract.bat %dataset% %dataSource% %seq_mode% %seq_date%
+call experiment_automation.bat %id% %model% %dataset% %dataSource% %seq_mode% %seq_date%
 
 :: ===== USE MODEL
 ::. experiment_automation.sh $id 'BUnet4ConvLSTM_SkipLSTM' $dataset
