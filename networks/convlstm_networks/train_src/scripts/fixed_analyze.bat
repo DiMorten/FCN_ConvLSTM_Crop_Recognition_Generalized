@@ -9,29 +9,23 @@
 
 
 ::dataset=cv
+:: set dataset=l2
 set dataset=l2
-:: set dataset=lm
-
+set model_dataset=lm
 ::::dataSource='OpticalWithClouds'
 ::dataSource='SAR'
 set dataSource=SAR
 set model=UUnet4ConvLSTM_doty
+:: set seq_mode=fixed
 set seq_mode=fixed
 
 
 
-
-
+cd ../analysis/
 set seq_date=may
-set id=fixed_label_%seq_mode%_%seq_date%_l2
-call patches_extract.bat %dataset% %dataSource% %seq_mode% %seq_date%
-call experiment_automation.bat %id% %model% %dataset% %dataSource% %seq_mode% %seq_date%
+set id=fixed_label_%seq_mode%_%seq_date%_700perclass
+python analysis_nto1_fixedseq_fixedlabel.py --dataset=%dataset% --model_dataset=%model_dataset% --seq_date=%seq_date%
 
-
-:: set seq_date=jul
-:: set id=fixed_label_%seq_mode%_%seq_date%_l2
-:: call patches_extract.bat %dataset% %dataSource% %seq_mode% %seq_date%
-:: call experiment_automation.bat %id% %model% %dataset% %dataSource% %seq_mode% %seq_date%
 :: ===== USE MODEL
 ::. experiment_automation.sh $id 'BUnet4ConvLSTM_SkipLSTM' $dataset
 ::. experiment_automation.sh $id 'Unet3D' $dataset

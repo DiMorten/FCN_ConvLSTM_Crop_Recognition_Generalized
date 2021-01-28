@@ -312,9 +312,19 @@ class DataForNet(object):
 
 		#patch["full_ims"]=self.dataSource.im_seq_normalize3(patch["full_ims"],patch["train_mask"],
 		#		scaler_load=False)
-		patch["full_ims"]=self.dataSource.im_seq_normalize_hwt(patch["full_ims"],patch["train_mask"],
-				scaler_load=True)
+		deb.prints(self.dataset.name)
+		deb.prints(self.dataset.scaler_name)		
+		deb.prints(self.dataset.seq_mode)
+		deb.prints(self.dataset.seq_date)
+		deb.prints(self.dataset.scaler_load)
 
+		patch["full_ims"]=self.dataSource.im_seq_normalize_hwt(patch["full_ims"],patch["train_mask"],
+				scaler_load=self.dataset.scaler_load, ds_name=self.dataset.scaler_name, 
+				seq_mode=self.dataset.seq_mode, seq_date=self.dataset.seq_date)
+
+		just_normalize = False
+		if just_normalize == True:
+			sys.exit("Just normalize")
 
 		# Optionally get im stats
 		calcAverageTimeSeriesFlag=False
@@ -384,12 +394,19 @@ class DataForNet(object):
 		
 		print("#========================== STORE FULL MASKED NORMALIZED IMAGES ===============#")
 		store_full_masked_normalized=True
+		full_ims_only=False
+
+		deb.prints(store_full_masked_normalized)
+		deb.prints(full_ims_only)
+		deb.prints('../'+self.dataset.name+'_data/full_ims/full_ims_test.npy')
 		if store_full_masked_normalized==True:
-			np.save('full_ims_test.npy',self.full_ims_test.astype(np.float16))
-			np.save('full_ims_train.npy',self.full_ims_train.astype(np.float16))
-			np.save('full_label_test.npy',self.full_label_test)
-			np.save('full_label_train.npy',self.full_label_train)
-			
+			np.save('../'+self.dataset.name+'_data/full_ims/full_ims_test.npy',self.full_ims_test.astype(np.float16))
+			np.save('../'+self.dataset.name+'_data/full_ims/full_ims_train.npy',self.full_ims_train.astype(np.float16))
+			np.save('../'+self.dataset.name+'_data/full_ims/full_label_test.npy',self.full_label_test)
+			np.save('../'+self.dataset.name+'_data/full_ims/full_label_train.npy',self.full_label_train)
+
+		if full_ims_only==True:
+			sys.exit("Store full ims only")
 		#========================== BEGIN PATCH EXTRACTION ============================#
 		view_as_windows_flag=False
 		if view_as_windows_flag==True:

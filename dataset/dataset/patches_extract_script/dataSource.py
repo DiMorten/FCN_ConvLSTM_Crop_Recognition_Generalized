@@ -99,7 +99,7 @@ class SARSource(DataSource):
 		print("FINISHED NORMALIZING, RESULT:")
 		print(np.min(im_norm),np.max(im_norm),np.average(im_norm))
 		return im_norm
-	def im_seq_normalize_hwt(self,im,mask, scaler_load = False):
+	def im_seq_normalize_hwt(self,im,mask, scaler_load = False, ds_name='', seq_mode='', seq_date=''):
 		im_check_flag=False
 		t_steps,h,w,channels=im.shape
 		#im=im.copy()
@@ -121,7 +121,7 @@ class SARSource(DataSource):
 		print(np.min(im_flat[mask_flat==1,:]),np.max(im_flat[mask_flat==1,:]),np.average(im_flat[mask_flat==1,:]))
 
 		scaler=StandardScaler()
-		scaler_filename = 'normalization_scaler.pkl'
+		scaler_filename = 'normalization_scaler_'+ds_name+'_'+seq_mode+'_'+seq_date+'.pkl'
 		if scaler_load == False:
 			scaler.fit(im_flat[mask_flat==1,:])
 			joblib.dump(scaler, scaler_filename)
@@ -246,7 +246,7 @@ class OpticalSourceWithClouds(OpticalSource):
 		self.name='OpticalSourceWithClouds'
 
 class Dataset(object):
-	def __init__(self,path,im_h,im_w,class_n,class_list,name,padded_dates,seq_mode,seq_date):
+	def __init__(self,path,im_h,im_w,class_n,class_list,name,padded_dates,seq_mode,seq_date,scaler_load,scaler_name):
 		self.path=Path(path)
 		self.class_n=class_n
 		self.im_h=im_h
@@ -256,6 +256,8 @@ class Dataset(object):
 		self.padded_dates=padded_dates
 		self.seq_mode=seq_mode
 		self.seq_date=seq_date
+		self.scaler_load = scaler_load
+		self.scaler_name = scaler_name
 	@abstractmethod
 	def addDataSource(self,dataSource):
 		pass
@@ -397,7 +399,9 @@ class LEM(Dataset):
 		im_h=8484
 		class_list = ['Background','Soybean','Maize','Cotton','Coffee','Beans','Sorghum','Millet','Eucalyptus','Pasture/Grass','Hay','Cerrado','Conversion Area','Soil','Not Identified']
 		padded_dates = [-12, -11]
-		super().__init__(path,im_h,im_w,class_n,class_list,name,padded_dates,seq_mode,seq_date)
+		scaler_load=False
+		scaler_name=name
+		super().__init__(path,im_h,im_w,class_n,class_list,name,padded_dates,seq_mode,seq_date,scaler_load,scaler_name)
 
 	def addDataSource(self,dataSource):
 		deb.prints(dataSource.name)
@@ -469,13 +473,13 @@ class LEM(Dataset):
 					assert self.im_list[-1]=='20180420_S1'
 
 				elif self.seq_date=='may':					
-					self.im_list=im_list_full[-1-12+1:-1+1]
+					self.im_list=im_list_full[-1-12+1:]
 					assert len(self.im_list)==12
 					assert self.im_list[-1]=='20180514_S1'
 
 				elif self.seq_date=='jun':					
 					self.im_list=im_list_full[-12-12+1:-12+1]
-					assert len(self.im_list)==12
+					# assert len(self.im_list)==12
 					assert self.im_list[-1]=='20170612_S1'
 
 				elif self.seq_date=='jul':					
@@ -541,26 +545,100 @@ class LEM2(Dataset):
 		im_h=8484
 		class_list = ['Background','Soybean','Maize','Cotton','Coffee','Beans','Sorghum','Millet','Eucalyptus','Pasture/Grass','Hay','Cerrado','Conversion Area','Soil','Not Identified']
 		padded_dates = []
-		super().__init__(path,im_h,im_w,class_n,class_list,name,padded_dates,seq_mode,seq_date)
+		scaler_load=True
+		scaler_name='lm'
+		super().__init__(path,im_h,im_w,class_n,class_list,name,padded_dates,seq_mode,seq_date,scaler_load,scaler_name)
 
 	def addDataSource(self,dataSource):
 		deb.prints(dataSource.name)
 		self.dataSource = dataSource
 		if self.dataSource.name == 'SARSource':
+			deb.prints(self.seq_mode)
+			deb.prints(self.seq_date)
 
 			mode='var'
 			mode='fixed'
-			if mode=='var':
-				self.im_list = ['20181110_S1','20181216_S1','20190121_S1','20190214_S1','20190322_S1',
-					'20190415_S1','20190521_S1','20190614_S1','20190720_S1','20190813_S1','20190918_S1',
-					'20191012_S1','20191117_S1','20191223_S1','20200116_S1','20200221_S1','20200316_S1',
-					'20200421_S1','20200515_S1','20200620_S1','20200714_S1','20200819_S1','20200912_S1']
-			else:
+			im_list_full = ['20181110_S1','20181216_S1','20190121_S1','20190214_S1','20190322_S1',
+				'20190415_S1','20190521_S1','20190614_S1','20190720_S1','20190813_S1','20190918_S1',
+				'20191012_S1','20191117_S1','20191223_S1','20200116_S1','20200221_S1','20200316_S1',
+				'20200421_S1','20200515_S1','20200620_S1','20200714_S1','20200819_S1','20200912_S1']
+
+			if self.seq_mode=='var_label':
+				self.im_list=im_list_full.copy()
+			elif self.seq_mode=='fixed':
+
+				# 12 len fixed. label -5
+				if self.seq_date=='jan':
+					id_=-9
+					self.im_list=im_list_full[id_-12+1:id_+1]
+					assert len(self.im_list)==12
+					assert self.im_list[-1]=='20200116_S1'
+#					self.im_list=['20170212_S1','20170308_S1',
+#					'20170413_S1','20170519_S1',
+#					'20170612_S1', '20170706_S1', '20170811_S1', '20170916_S1', '20171010_S1', '20171115_S1', 
+#					'20171209_S1', '20180114_S1']
+				elif self.seq_date=='feb':					
+					id_=-8
+					self.im_list=im_list_full[id_-12+1:id_+1]
+					assert len(self.im_list)==12
+					assert self.im_list[-1]=='20200221_S1'
+				elif self.seq_date=='mar':					
+					id_=-7
+					self.im_list=im_list_full[id_-12+1:id_+1]
+					assert len(self.im_list)==12
+					assert self.im_list[-1]=='20200316_S1'
+				elif self.seq_date=='apr':					
+					id_=-6
+					self.im_list=im_list_full[id_-12+1:id_+1]
+					assert len(self.im_list)==12
+					assert self.im_list[-1]=='20200421_S1'
+				elif self.seq_date=='may':					
+					id_=-5
+					self.im_list=im_list_full[id_-12+1:id_+1]
+					assert len(self.im_list)==12
+					assert self.im_list[-1]=='20200515_S1'
+				elif self.seq_date=='jun':					
+					id_=-4
+					self.im_list=im_list_full[id_-12+1:id_+1]
+					assert len(self.im_list)==12
+					assert self.im_list[-1]=='20200620_S1'
+				elif self.seq_date=='jul':					
+					id_=-3
+					self.im_list=im_list_full[id_-12+1:id_+1]
+					assert len(self.im_list)==12
+					assert self.im_list[-1]=='20200714_S1'
+				elif self.seq_date=='aug':					
+					id_=-2
+					self.im_list=im_list_full[id_-12+1:id_+1]
+					assert len(self.im_list)==12
+					assert self.im_list[-1]=='20200819_S1'
+				elif self.seq_date=='sep':					
+					id_=-1
+					self.im_list=im_list_full[id_-12+1:]
+					assert len(self.im_list)==12
+					assert self.im_list[-1]=='20200912_S1'
+				elif self.seq_date=='oct':					
+					id_=-12
+					self.im_list=im_list_full[id_-12+1:id_+1]
+					assert len(self.im_list)==12
+					assert self.im_list[-1]=='20191012_S1'
+				elif self.seq_date=='nov':					
+					id_=-11
+					self.im_list=im_list_full[id_-12+1:id_+1]
+					assert len(self.im_list)==12
+					assert self.im_list[-1]=='20191117_S1'
+				elif self.seq_date=='dec':					
+					id_=-10
+					self.im_list=im_list_full[id_-12+1:id_+1]
+					assert len(self.im_list)==12
+					assert self.im_list[-1]=='20191223_S1'
+
 				# dec
-				self.im_list = ['20190121_S1','20190214_S1','20190322_S1',
-					'20190415_S1','20190521_S1','20190614_S1','20190720_S1','20190813_S1','20190918_S1',
-					'20191012_S1','20191117_S1','20191223_S1']
-				
+#				self.im_list = ['20190121_S1','20190214_S1','20190322_S1',
+#					'20190415_S1','20190521_S1','20190614_S1','20190720_S1','20190813_S1','20190918_S1',
+#					'20191012_S1','20191117_S1','20191223_S1']
+
+
 
 
 			self.label_list=self.im_list.copy()

@@ -15,24 +15,32 @@ from model_input_mode import MIMFixed, MIMVarLabel, MIMVarSeqLabel, MIMVarLabel_
 sys.path.append('../../../../../dataset/dataset/patches_extract_script/')
 from dataSource import DataSource, SARSource, OpticalSource, Dataset, LEM, LEM2, CampoVerde, OpticalSourceWithClouds, Humidity
 from sklearn.metrics import confusion_matrix,f1_score,accuracy_score,classification_report,recall_score,precision_score
-
+import colorama
+colorama.init()
+import pickle
+import deb
 parser = argparse.ArgumentParser(description='')
 parser.add_argument('-ds', '--dataset', dest='dataset',
-					default='cv', help='t len')
+					default='l2', help='t len')
 parser.add_argument('-mdl', '--model', dest='model_type',
-					default='densenet', help='t len')
+					default='unet', help='t len')
+
+parser.add_argument('-seq_date', '--seq_date', dest='seq_date',
+					default='dec', help='date')
 
 a = parser.parse_args()
 
 dataset=a.dataset
 model_type=a.model_type
 
-direct_execution=True
+direct_execution=False
 if direct_execution==True:
-	dataset='l2'
+	dataset='lm'
 	model_type='unet'
 
-
+deb.prints(dataset)
+deb.prints(model_type)
+deb.prints(direct_execution)
 
 def patch_file_id_order_from_folder(folder_path):
 	paths=glob.glob(folder_path+'*.npy')
@@ -58,6 +66,7 @@ if dataset=='lm':
 		predictions_path=path+'prediction_BUnet4ConvLSTM_repeating1.npy'
 		#predictions_path=path+'prediction_BUnet4ConvLSTM_repeating2.npy'
 		#predictions_path=path+'prediction_BUnet4ConvLSTM_repeating4.npy'
+		predictions_path = path+'model_best_UUnet4ConvLSTM_doty_fixed_label_fixed_'+a.seq_date+'_700perclass.h5'			
 
 
 	elif model_type=='atrous':
@@ -99,7 +108,6 @@ elif dataset=='cv':
 	elif model_type=='unet':
 		#predictions_path=path+'prediction_BUnet4ConvLSTM_repeating2.npy'
 		predictions_path=path+'model_best_BUnet4ConvLSTM_int16.h5'
-				
 	elif model_type=='atrous':
 		predictions_path=path+'prediction_BAtrousConvLSTM_repeating2.npy'			
 	elif model_type=='atrousgap':
@@ -134,6 +142,9 @@ elif dataset=='l2':
 		#predictions_path=path+'prediction_BUnet4ConvLSTM_repeating2.npy'
 		#predictions_path=path+'prediction_BUnet4ConvLSTM_repeating4.npy'
 		predictions_path = path+'model_best_UUnet4ConvLSTM_doty_fixed_label_dec.h5'
+		predictions_path = path+'model_best_UUnet4ConvLSTM_doty_fixed_label_fixed_'+a.seq_date+'.h5'
+		predictions_path = path+'model_best_UUnet4ConvLSTM_doty_fixed_label_fixed_'+a.seq_date+'_700perclass.h5'
+#		predictions_path = path+'model_best_UUnet4ConvLSTM_doty_fixed_label_dec_good_slvc05.h5'
 	mask_path=data_path+'l2_data/TrainTestMask.tif'
 	location_path=data_path+'l2_data/locations/'
 	folder_load_path=data_path+'l2_data/train_test/test/labels/'
@@ -237,17 +248,21 @@ full_label_test = np.load(full_path+'full_label_test.npy').astype(np.uint8)
 print(full_ims_test.shape)
 print(full_label_test.shape)
 
-
+print("Full label test unique",np.unique(full_label_test,return_counts=True))
+pdb.set_trace()
 # add doty
 mim = MIMFixed()
 
 data = {'labeled_dates': 12}
 data['labeled_dates'] = 12
 
+seq_mode='fixed'
+
 if dataset=='lm':
-	ds=LEM()
+	ds=LEM(seq_mode, a.seq_date)
 elif dataset=='l2':
-	ds=LEM2()
+	ds=LEM2(seq_mode, a.seq_date)
+deb.prints(ds)
 dataSource = SARSource()
 ds.addDataSource(dataSource)
 
@@ -271,25 +286,77 @@ else:
 	overlap=0
 print(full_ims_test.shape)
 print(full_label_test.shape)
-print(np.unique(full_label_test,return_counts=True))
+print("Full label test unique",np.unique(full_label_test,return_counts=True))
 
 sequence_len, row, col, bands = full_ims_test.shape
 #pdb.set_trace()
 
 label_rebuilt=full_label_test[-1]
+print("full_label_test.shape, label_rebuilt.shape", full_label_test.shape, label_rebuilt.shape)
+print("label_rebuilt.shape",label_rebuilt.shape)
+print("label_rebuilt.unique",np.unique(label_rebuilt,return_counts=True))
+
+##pdb.set_trace()
 lm_labeled_dates = ['20170612', '20170706', '20170811', '20170916', '20171010', '20171115', 
 					'20171209', '20180114', '20180219', '20180315', '20180420', '20180514']
 l2_labeled_dates = ['20191012','20191117','20191223','20200116','20200221','20200316',
 					'20200421','20200515','20200620','20200714','20200819','20200912']
 
+if a.seq_date=='jan':
+	lm_date = lm_labeled_dates[7]
+	l2_date = l2_labeled_dates[3]
+
+elif a.seq_date=='feb':
+	lm_date = lm_labeled_dates[8]
+	l2_date = l2_labeled_dates[4]
+
+elif a.seq_date=='mar':
+	lm_date = lm_labeled_dates[9]
+	l2_date = l2_labeled_dates[5]
+
+elif a.seq_date=='apr':
+	lm_date = lm_labeled_dates[10]
+	l2_date = l2_labeled_dates[6]
+
+elif a.seq_date=='may':
+	lm_date = lm_labeled_dates[11]
+	l2_date = l2_labeled_dates[7]
+
+elif a.seq_date=='jun':
+	lm_date = lm_labeled_dates[0]
+	l2_date = l2_labeled_dates[8]
+
+elif a.seq_date=='jul':
+	lm_date = lm_labeled_dates[1]
+	l2_date = l2_labeled_dates[9]
+
+elif a.seq_date=='aug':
+	lm_date = lm_labeled_dates[2]
+	l2_date = l2_labeled_dates[10]
+
+elif a.seq_date=='sep':
+	lm_date = lm_labeled_dates[3]
+	l2_date = l2_labeled_dates[11]
+
+elif a.seq_date=='oct':
+	lm_date = lm_labeled_dates[4]
+	l2_date = l2_labeled_dates[0]
+
+elif a.seq_date=='nov':
+	lm_date = lm_labeled_dates[5]
+	l2_date = l2_labeled_dates[1]
+
+if a.seq_date=='dec':
 #dec
-lm_date = lm_labeled_dates[6]
-l2_date = l2_labeled_dates[2]
+	lm_date = lm_labeled_dates[6]
+	l2_date = l2_labeled_dates[2]
 
-
+deb.prints(a.seq_date)
+deb.prints(lm_date)
+deb.prints(l2_date)
 
 del full_label_test
-mosaic_flag = False
+mosaic_flag = True
 if mosaic_flag == True:
 	#prediction_rebuilt=np.ones((row,col)).astype(np.uint8)*255
 	prediction_rebuilt=np.zeros((row,col)).astype(np.uint8)
@@ -333,21 +400,25 @@ if mosaic_flag == True:
 	print(np.unique(prediction_rebuilt, return_counts=True))
 
 	prediction_rebuilt=np.reshape(prediction_rebuilt,-1)
-#	label_rebuilt=np.reshape(label_rebuilt,-1)
-#	mask = np.reshape(mask,-1)
 
-	translate_label_path = '../../../train_src/'
-	prediction_rebuilt = predictionsLoader.newLabel2labelTranslate(prediction_rebuilt, 
-			translate_label_path + 'new_labels2labels_lm_'+lm_date+'_S1.pkl',
-			bcknd_flag=False)
-	
-
-	np.save('prediction_rebuilt_'+l2_date+'.npy',prediction_rebuilt)
+	np.save('prediction_rebuilt_'+lm_date+'.npy',prediction_rebuilt)
 else:
-	prediction_rebuilt = np.load('prediction_rebuilt_'+l2_date+'.npy')
+	prediction_rebuilt = np.load('prediction_rebuilt_'+lm_date+'.npy')
 	print(np.unique(prediction_rebuilt, return_counts=True))
-	label_rebuilt=np.reshape(label_rebuilt,-1)
-	mask = np.reshape(mask,-1)
+
+deb.prints(np.unique(prediction_rebuilt,return_counts=True))
+
+label_rebuilt=np.reshape(label_rebuilt,-1)
+print("label_rebuilt.unique",np.unique(label_rebuilt,return_counts=True))
+
+pdb.set_trace()
+
+mask = np.reshape(mask,-1)
+translate_label_path = '../../../train_src/'
+prediction_rebuilt = predictionsLoader.newLabel2labelTranslate(prediction_rebuilt, 
+		translate_label_path + 'new_labels2labels_lm_'+lm_date+'_S1.pkl',
+		bcknd_flag=False)
+deb.prints(np.unique(prediction_rebuilt,return_counts=True))
 
 # ========== metrics get =======#
 def my_f1_score(label,prediction):
@@ -362,19 +433,43 @@ def my_f1_score(label,prediction):
 	#print("f1_values",f1_values," f1_value:",f1_value)
 	return f1_value
 
-def metrics_get(label, predictions, mask):
+
+
+def metrics_get(label, predictions, mask, small_classes_ignore=True):
 
 
 
-	
-	print("label predictions shape",label.shape,predictions.shape)
+	class_n = 15
+	print("label predictions shape, beginning of metrics_get",label.shape,predictions.shape)
 	predictions=predictions[mask==2]
 	label=label[mask==2]
-	print("label predictions shape",label.shape,predictions.shape)
+	print("label predictions shape, test area",label.shape,predictions.shape)
+	print("Before small classes ignore")
 
-	predictions=predictions[label!=14]
-	label=label[label!=14]	
-	print("label predictions shape",label.shape,predictions.shape)
+	print("Metrics get predictions",np.unique(predictions, return_counts=True))
+	print("Metrics get label",np.unique(label, return_counts=True))
+	predictions=predictions[label!=0]
+	label=label[label!=0]	
+
+	predictions = predictions - 1
+	label = label - 1
+	print("label predictions shape, no bcknd",label.shape,predictions.shape)
+	
+	print("Metrics get predictions",np.unique(predictions, return_counts=True))
+	print("Metrics get label",np.unique(label, return_counts=True))
+	if small_classes_ignore==True:
+			if dataset=='l2':
+			#important_classes_idx=[0,1,2,6,8,10,12]
+				important_classes_idx=[0,1,2,6,12] # only for bcknd final value
+				#important_classes_idx = [x+1 for x in important_classes_idx]
+				deb.prints(important_classes_idx)
+			for idx in range(class_n):
+				if idx not in important_classes_idx:
+					predictions[predictions==idx]=20
+					label[label==idx]=20	
+	print("After small classes ignore")
+	print("Metrics get predictions",np.unique(predictions, return_counts=True))
+	print("Metrics get label",np.unique(label, return_counts=True))							
 	metrics = {}
 	metrics['f1_score']=my_f1_score(label,predictions) # [0.9 0.9 0.4 0.5] [1 2 3 4 5]
 	metrics['f1_score_noavg']=f1_score(label,predictions,average=None) # [0.9 0.9 0.4 0.5] [1 2 3 4 5]
@@ -382,58 +477,70 @@ def metrics_get(label, predictions, mask):
 	metrics['overall_acc']=accuracy_score(label,predictions)
 	return metrics
 
+
 		
-metrics = metrics_get(label_rebuilt, prediction_rebuilt, mask)
+metrics = metrics_get(label_rebuilt, prediction_rebuilt, mask, small_classes_ignore=False)
 print(metrics)
-pdb.set_trace()
-# everything outside mask is 255
-for t_step in range(sequence_len):
-	label_rebuilt[t_step][mask==0]=255
+f = open("metrics_fixed_"+l2_date+".pkl", "wb")
+pickle.dump(metrics, f)
+f.close()
 
-	prediction_rebuilt[t_step][mask==0]=255
-#label_rebuilt[label_rebuilt==class_n]=255
-	
-print("everything outside mask is 255")
-print(np.unique(label_rebuilt,return_counts=True))
-print(np.unique(prediction_rebuilt,return_counts=True))
+metrics = metrics_get(label_rebuilt, prediction_rebuilt, mask, small_classes_ignore=True)
+print(metrics)
+f = open("metrics_fixed_"+l2_date+"_small_classes_ignore.pkl", "wb")
+pickle.dump(metrics, f)
+f.close()
+
+if False:
+	pdb.set_trace()
+	# everything outside mask is 255
+	for t_step in range(sequence_len):
+		label_rebuilt[t_step][mask==0]=255
+
+		prediction_rebuilt[t_step][mask==0]=255
+	#label_rebuilt[label_rebuilt==class_n]=255
+		
+	print("everything outside mask is 255")
+	print(np.unique(label_rebuilt,return_counts=True))
+	print(np.unique(prediction_rebuilt,return_counts=True))
 
 
-# Paint it!
+	# Paint it!
 
 
-print(custom_colormap.shape)
-#class_n=custom_colormap.shape[0]
-#=== change to rgb
-print("Gray",prediction_rebuilt.dtype)
-prediction_rgb=np.zeros((prediction_rebuilt.shape+(3,))).astype(np.uint8)
-label_rgb=np.zeros_like(prediction_rgb)
-print("Adding color...")
+	print(custom_colormap.shape)
+	#class_n=custom_colormap.shape[0]
+	#=== change to rgb
+	print("Gray",prediction_rebuilt.dtype)
+	prediction_rgb=np.zeros((prediction_rebuilt.shape+(3,))).astype(np.uint8)
+	label_rgb=np.zeros_like(prediction_rgb)
+	print("Adding color...")
 
-for t_step in range(sequence_len):
-	prediction_rgb[t_step]=cv2.cvtColor(prediction_rebuilt[t_step],cv2.COLOR_GRAY2RGB)
-	label_rgb[t_step]=cv2.cvtColor(label_rebuilt[t_step],cv2.COLOR_GRAY2RGB)
+	for t_step in range(sequence_len):
+		prediction_rgb[t_step]=cv2.cvtColor(prediction_rebuilt[t_step],cv2.COLOR_GRAY2RGB)
+		label_rgb[t_step]=cv2.cvtColor(label_rebuilt[t_step],cv2.COLOR_GRAY2RGB)
 
-print("RGB",prediction_rgb.dtype,prediction_rgb.shape)
+	print("RGB",prediction_rgb.dtype,prediction_rgb.shape)
 
-for idx in range(custom_colormap.shape[0]):
-	print("Assigning color. t_step:",idx)
-	for chan in [0,1,2]:
-		prediction_rgb[:,:,:,chan][prediction_rgb[:,:,:,chan]==idx]=custom_colormap[idx,chan]
-		label_rgb[:,:,:,chan][label_rgb[:,:,:,chan]==idx]=custom_colormap[idx,chan]
+	for idx in range(custom_colormap.shape[0]):
+		print("Assigning color. t_step:",idx)
+		for chan in [0,1,2]:
+			prediction_rgb[:,:,:,chan][prediction_rgb[:,:,:,chan]==idx]=custom_colormap[idx,chan]
+			label_rgb[:,:,:,chan][label_rgb[:,:,:,chan]==idx]=custom_colormap[idx,chan]
 
-print("RGB",prediction_rgb.dtype,prediction_rgb.shape)
+	print("RGB",prediction_rgb.dtype,prediction_rgb.shape)
 
-#for idx in range(custom_colormap.shape[0]):
-#	for chan in [0,1,2]:
-#		prediction_rgb[:,:,chan][prediction_rgb[:,:,chan]==correspondence[idx]]=custom_colormap[idx,chan]
-print("Saving the resulting images for all dates...")
-for t_step in range(sequence_len):
+	#for idx in range(custom_colormap.shape[0]):
+	#	for chan in [0,1,2]:
+	#		prediction_rgb[:,:,chan][prediction_rgb[:,:,chan]==correspondence[idx]]=custom_colormap[idx,chan]
+	print("Saving the resulting images for all dates...")
+	for t_step in range(sequence_len):
 
-	label_rgb[t_step]=cv2.cvtColor(label_rgb[t_step],cv2.COLOR_BGR2RGB)
-	prediction_rgb[t_step]=cv2.cvtColor(prediction_rgb[t_step],cv2.COLOR_BGR2RGB)
-	save_folder=dataset+"/"+model_type+"/"
-	pathlib.Path(save_folder).mkdir(parents=True, exist_ok=True)
-	cv2.imwrite(save_folder+"prediction_t"+str(t_step)+"_"+model_type+".png",prediction_rgb[t_step])
-	cv2.imwrite(save_folder+"label_t"+str(t_step)+"_"+model_type+".png",label_rgb[t_step])
+		label_rgb[t_step]=cv2.cvtColor(label_rgb[t_step],cv2.COLOR_BGR2RGB)
+		prediction_rgb[t_step]=cv2.cvtColor(prediction_rgb[t_step],cv2.COLOR_BGR2RGB)
+		save_folder=dataset+"/"+model_type+"/"
+		pathlib.Path(save_folder).mkdir(parents=True, exist_ok=True)
+		cv2.imwrite(save_folder+"prediction_t"+str(t_step)+"_"+model_type+".png",prediction_rgb[t_step])
+		cv2.imwrite(save_folder+"label_t"+str(t_step)+"_"+model_type+".png",label_rgb[t_step])
 
-print(prediction_rgb[0,0,0,:])
+	print(prediction_rgb[0,0,0,:])

@@ -23,6 +23,20 @@ init()
 save_bar_flag=True
 sys.path.append('../')
 import deb
+import argparse
+parser = argparse.ArgumentParser(description='Process some integers.')
+
+parser.add_argument('--seq_date', dest='seq_date', 
+                    default='jun',
+                    help='seq_date')
+parser.add_argument('--dataset', dest='dataset', 
+                    default='l2',
+                    help='dataset')
+parser.add_argument('--model_dataset', dest='model_dataset', 
+                    default='lm',
+                    help='model_dataset')
+
+args = parser.parse_args()
 #====================================
 def dense_crf(probs, img=None, n_iters=10, n_classes=19,
 			  sxy_gaussian=(1, 1), compat_gaussian=4,
@@ -68,15 +82,27 @@ def labels_predictions_filter_transform(label_test,predictions,class_n,
 	predictions=np.reshape(predictions,-1)
 	#label_test=label_test.argmax(axis=-1)
 	label_test=np.reshape(label_test,-1)
-#	predictions=predictions[label_test<class_n]
-#	label_test=label_test[label_test<class_n]
-	deb.prints(np.unique(predictions,return_counts=True))
-	predictions=predictions[label_test!=0]
-	label_test=label_test[label_test!=0]	
-	deb.prints(np.unique(predictions,return_counts=True))
 
-	predictions = predictions - 1
-	label_test = label_test - 1
+
+	deb.prints(np.unique(predictions,return_counts=True))
+	deb.prints(np.unique(label_test,return_counts=True))
+
+	translate_mode = True
+	deb.prints(translate_mode)
+	if translate_mode == False:
+		bcknd_id = np.unique(label_test)[-1]
+		deb.prints(bcknd_id)
+		predictions=predictions[label_test<bcknd_id]
+		label_test=label_test[label_test<bcknd_id]
+	else:
+		predictions=predictions[label_test!=0]
+		label_test=label_test[label_test!=0]	
+		predictions = predictions - 1
+		label_test = label_test - 1
+
+	deb.prints(np.unique(predictions,return_counts=True))
+	deb.prints(np.unique(label_test,return_counts=True))
+
 
 	print("========================= Flattened the predictions and labels")	
 	print("Loaded predictions unique: ",np.unique(predictions,return_counts=True))
@@ -95,9 +121,16 @@ def labels_predictions_filter_transform(label_test,predictions,class_n,
 			important_classes_idx=[0,1,2,6,7,8]
 		elif dataset=='lm':
 			important_classes_idx=[0,1,2,6,8,10,12]
+			important_classes_idx=[0,1,6,10,12]
 		elif dataset=='l2':
-			important_classes_idx=[0,1,2,6,8,10,12]
-			important_classes_idx=[0,1,2,6,12]
+#			important_classes_idx=[0,1,2,6,8,10,12]
+#			important_classes_idx=[0,1,2,6,10,12]
+
+#			important_classes_idx=[0,1,2,6,12]
+			important_classes_idx=[0,1,6,10,12] #soybean, maize, cerrado, soil, millet
+#jun			2,3,7,13
+			
+#			important_classes_idx=[0,1,4,5,11]
 
 		mode=3
 		if mode==1:
@@ -229,7 +262,7 @@ def experiment_analyze(small_classes_ignore,dataset='cv',
 		predictionsLoader = PredictionsLoaderModelNto1FixedSeqFixedLabel(path_test, dataset=dataset)
 
 
-		predictions, label_test = predictionsLoader.loadPredictions(model_path)
+		predictions, label_test = predictionsLoader.loadPredictions(model_path, seq_date=args.seq_date, model_dataset=args.model_dataset)
 		deb.prints(np.unique(np.concatenate((predictions,label_test),axis=0)))
 	
 	#predictions=np.load(prediction_path, allow_pickle=True)
@@ -262,7 +295,8 @@ def experiment_analyze(small_classes_ignore,dataset='cv',
 		# 			date_important_classes=[0,6,8]
 
 
-		for t in range(label_test.shape[1]):
+#		for t in range(label_test.shape[1]):
+		for t in [0]:
 			predictions_t = predictions.copy()
 			label_test_t = label_test.copy()
 			#skip_crf = model_n<2 #prediction_filename.startswith('model_best_BUnet4ConvLSTM_128fl_')
@@ -282,8 +316,9 @@ def experiment_analyze(small_classes_ignore,dataset='cv',
 			metrics_t['f1_score'].append(metrics['f1_score'])
 			metrics_t['overall_acc'].append(metrics['overall_acc'])
 			metrics_t['average_acc'].append(metrics['average_acc'])
-
-		print(metrics_t)
+			print(args.seq_date)
+			print(metrics_t)
+			sys.exit("fixed label analysis finished")
 		#pdb.set_trace()
 		return metrics_t
 	elif mode=='global':
@@ -582,11 +617,11 @@ def experiments_plot(metrics,experiment_list,dataset,
 	#plot_metric=[x['f1_score'] for x in metrics]
 	#print(plot_metric)
 	
-	plt.show()
+	##plt.show()
 
 #dataset='lm_optical_clouds'
 #dataset='lm'
-dataset='l2'
+dataset=args.dataset
 
 #dataset='cv'
 #dataset='lm_sarh'
@@ -669,8 +704,21 @@ elif dataset=='l2':
 		experiment_groups=[[
 			'model_best_UUnet4ConvLSTM_doty_fixed_label_len.h5'
 		]]	
-
-		
+		experiment_groups=[[
+			'model_best_UUnet4ConvLSTM_doty_fixed_label_fixed_dec_700perclass.h5'
+		]]	
+		experiment_groups=[[
+			'model_best_UUnet4ConvLSTM_doty_fixed_label_fixed_dec_dummy.h5'
+		]]	
+		experiment_groups=[[
+			'model_best_UUnet4ConvLSTM_doty_fixed_label_fixed_mar_l2_mar.h5'
+		]]	
+		experiment_groups=[[
+			'model_best_UUnet4ConvLSTM_doty_fixed_label_fixed_'+args.seq_date+'_l2.h5'
+		]]	
+		experiment_groups=[[
+			'model_best_UUnet4ConvLSTM_doty_fixed_label_fixed_'+args.seq_date+'_700perclass.h5'
+		]]	
 elif dataset=='lm':
 
 	experiment_groups=[[
@@ -875,6 +923,9 @@ elif dataset=='lm':
 		experiment_groups=[['model_best_UUnet4ConvLSTM_doty_var_label_valalldates.h5']]	
 		experiment_groups=[['model_best_UUnet4ConvLSTM_doty_var_label_valalldates_hwtnorm.h5']]	
 
+		experiment_groups=[[
+			'model_best_UUnet4ConvLSTM_doty_fixed_label_fixed_'+args.seq_date+'_700perclass.h5'
+		]]	
 
 elif dataset=='lm_optical':
 	exp_id=1

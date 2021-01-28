@@ -20,6 +20,12 @@ from PredictionsLoader import PredictionsLoaderNPY, PredictionsLoaderModel, Pred
 from colorama import init
 init()
 save_bar_flag=True
+parser = argparse.ArgumentParser(description='Process some integers.')
+
+parser.add_argument('--seq_date', dest='seq_date', 
+                    default='jun',
+                    help='seq_date')
+args = parser.parse_args()
 #====================================
 def dense_crf(probs, img=None, n_iters=10, n_classes=19,
 			  sxy_gaussian=(1, 1), compat_gaussian=4,
@@ -669,7 +675,9 @@ elif dataset=='l2':
 		experiment_groups=[[
 			'model_best_UUnet4ConvLSTM_doty_var_label_valalldates_rep10.h5'
 		]]	
-
+		experiment_groups=[[
+			'model_best_UUnet4ConvLSTM_doty_fixed_label_fixed_'+args.seq_date+'_l2.h5'
+		]]	
 		
 elif dataset=='lm':
 

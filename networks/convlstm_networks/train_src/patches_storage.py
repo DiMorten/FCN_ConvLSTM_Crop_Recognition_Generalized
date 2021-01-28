@@ -18,13 +18,15 @@ class PatchesStorage():
 		pass
 
 class PatchesStorageAllSamples(PatchesStorage):
-	def __init__(self,path):
+	def __init__(self,path, seq_mode, seq_date):
 		
 		self.path_patches = path + 'patches_bckndfixed/'
 		self.path={}
 		self.path['train_bckndfixed']=self.path_patches+'train/'
 		self.path['val_bckndfixed']=self.path_patches+'val/'
 		self.path['test_bckndfixed']=self.path_patches+'test/'
+		self.seq_mode = seq_mode
+		self.seq_date = seq_date
 		print("Path, ",self.path)
 		#pdb.set_trace()
 	def store(self,data_patches):
@@ -35,10 +37,10 @@ class PatchesStorageAllSamples(PatchesStorage):
 	def storeSplit(self, patches, split='train_bckndfixed'):
 		pathlib.Path(self.path[split]).mkdir(parents=True, exist_ok=True) 
 		print("Storing in ",self.path[split])
-		np.save(self.path[split]+'patches_in.npy', patches['in']) #to-do: add polymorphism for other types of input 
+		np.save(self.path[split]+'patches_in_'+self.seq_mode+'_'+self.seq_date+'.npy', patches['in']) #to-do: add polymorphism for other types of input 
 		
 		#pathlib.Path(self.path[split]['label']).mkdir(parents=True, exist_ok=True) 
-		np.save(self.path[split]+'patches_label.npy', patches['label']) #to-do: add polymorphism for other types of input 
+		np.save(self.path[split]+'patches_label_'+self.seq_mode+'_'+self.seq_date+'.npy', patches['label']) #to-do: add polymorphism for other types of input 
 		#pdb.set_trace()
 	def load(self):
 		data_patches={}

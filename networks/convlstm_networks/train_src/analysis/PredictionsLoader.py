@@ -130,16 +130,24 @@ class PredictionsLoaderModelNto1FixedSeqFixedLabel(PredictionsLoaderModelNto1):
 		##label = label - 1 # bcknd is 255
 		##label[label==255] = np.unique(label)[-2]
 		return translated_label 
-	def loadPredictions(self,path_model):
+	def loadPredictions(self,path_model,seq_date=None, model_dataset=None):
 		print("============== loading model =============")
 		model=load_model(path_model, compile=False)
 		print("Model", model)
 		print("Loading in data: ",self.path_test+'patches_in.npy')
 		batch = {}
-		batch['in']=np.load(self.path_test+'patches_in.npy',mmap_mode='r') # len is 21
-#		test_label=np.load(self.path_test+'patches_label.npy')
+		dated_patches_name =True
+		if dated_patches_name==False:
+
+			batch['in']=np.load(self.path_test+'patches_in.npy',mmap_mode='r') # len is 21
+	#		test_label=np.load(self.path_test+'patches_label.npy')
+			batch['label']=np.load(self.path_test+'patches_label.npy') # may18
+		else:
+			batch['in']=np.load(self.path_test+'patches_in_fixed_'+seq_date+'.npy',mmap_mode='r') # len is 21
+	#		test_label=np.load(self.path_test+'patches_label.npy')
+			batch['label']=np.load(self.path_test+'patches_label_fixed_'+seq_date+'.npy') # may18			
 		self.labeled_dates = 12
-		batch['label']=np.load(self.path_test+'patches_label.npy') # may18
+
 		deb.prints(batch['in'].shape)
 		deb.prints(batch['label'].shape)
 		#pdb.set_trace()
@@ -156,9 +164,9 @@ class PredictionsLoaderModelNto1FixedSeqFixedLabel(PredictionsLoaderModelNto1):
 		# add doty
 
 		if self.dataset=='lm':
-			ds=LEM()
+			ds=LEM('fixed', seq_date)
 		elif self.dataset=='l2':
-			ds=LEM2()
+			ds=LEM2('fixed', seq_date)
 		dataSource = SARSource()
 		ds.addDataSource(dataSource)
 	
@@ -172,6 +180,13 @@ class PredictionsLoaderModelNto1FixedSeqFixedLabel(PredictionsLoaderModelNto1):
 		model_t_len = 12
 		batch['shape'] = (batch['in'].shape[0], model_t_len) + batch['in'].shape[2:]
 
+		# model dataset is to get the correct last date from the model dataset
+
+		if model_dataset=='lm':
+			train_ds=LEM('fixed',seq_date)
+		elif model_dataset=='l2':
+			train_ds=LEM2('fixed', seq_date)
+		train_ds.addDataSource(SARSource())
 		# get model class n
 		model_shape = model.layers[-1].output_shape
 		model_class_n = model_shape[-1]
@@ -204,14 +219,21 @@ class PredictionsLoaderModelNto1FixedSeqFixedLabel(PredictionsLoaderModelNto1):
 		batch['label'] = batch['label'].argmax(axis=-1)
 		print(" shapes", test_predictions.shape, batch['label'].shape)
 		print( "uniques",np.unique(test_predictions, return_counts=True),np.unique(batch['label'], return_counts=True))
+		
+		translate_mode=True
+		deb.prints(translate_mode)
 
-		translate_label_path = '../'
-		test_predictions = self.newLabel2labelTranslate(test_predictions, 
-				translate_label_path + 'new_labels2labels_lm_20171209_S1.pkl',
-				bcknd_flag=False)
-		batch['label'] = self.newLabel2labelTranslate(batch['label'], 
-				translate_label_path + 'new_labels2labels_l2_20191223_S1.pkl',
-				bcknd_flag=True)
+		if translate_mode==True:
+			translate_label_path = '../'
+			test_predictions = self.newLabel2labelTranslate(test_predictions, 
+					#translate_label_path + 'new_labels2labels_lm_20171209_S1.pkl',
+					translate_label_path + 'new_labels2labels_'+model_dataset+'_'+train_ds.im_list[-1]+'.pkl',
+					
+					bcknd_flag=False)
+						
+			batch['label'] = self.newLabel2labelTranslate(batch['label'], 
+					translate_label_path + 'new_labels2labels_l2_'+ds.im_list[-1]+'.pkl',
+					bcknd_flag=True)
 		print("End shapes", test_predictions.shape, batch['label'].shape)
 		print(" shapes", test_predictions.shape, batch['label'].shape)
 		print( "uniques",np.unique(test_predictions, return_counts=True),np.unique(batch['label'], return_counts=True))

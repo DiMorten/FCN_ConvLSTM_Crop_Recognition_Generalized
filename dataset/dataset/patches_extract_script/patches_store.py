@@ -64,7 +64,7 @@ parser.add_argument('-rst','--ram_store', dest='ram_store',default=True, help="R
 parser.add_argument('-psv','--patches_save', dest='patches_save',default=True, help="Patches npy store")
 
 parser.add_argument('-seq_mode','--seq_mode', dest='seq_mode',default=True, help="seq_mode")
-parser.add_argument('-seq_dates','--seq_dates', dest='seq_dates',default=True, help="seq_dates")
+parser.add_argument('-seq_date','--seq_date', dest='seq_date',default=True, help="seq_date")
 
 args = parser.parse_args()
 
@@ -84,9 +84,9 @@ deb.prints(args.dataset_name)
 if args.dataset_name=='cv':
     dataset=CampoVerde()
 elif args.dataset_name=='lm':
-    dataset=LEM(args.seq_mode, args.seq_dates)
+    dataset=LEM(args.seq_mode, args.seq_date)
 elif args.dataset_name=='l2':
-    dataset=LEM2(args.seq_mode, args.seq_dates)
+    dataset=LEM2(args.seq_mode, args.seq_date)
 
 if args.dataset_source=='SAR':
     dataSource=SARSource()

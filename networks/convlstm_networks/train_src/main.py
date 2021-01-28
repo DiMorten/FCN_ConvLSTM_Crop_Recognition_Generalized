@@ -346,6 +346,21 @@ class Dataset(NetObject):
 
 		deb.prints(self.patches['train']['label'].shape)
 		deb.prints(np.unique(self.patches['train']['label'],return_counts=True))  
+		deb.prints(np.unique(self.patches['test']['label'], return_counts=True))
+
+		# ===== test extra classes in fixed mode
+		if args.seq_mode == 'fixed':
+			unique_train = np.unique(self.patches['train']['label'])
+			unique_test = np.unique(self.patches['test']['label'])
+			test_additional_classes=[]
+			for value in unique_test:
+				if value not in unique_train:
+					self.patches['test']['label'][self.patches['test']['label'] == value] = 30 + value + 1 # if class is 3, it becomes 33 after subtracting 1
+					test_additional_classes.append(value)
+			deb.prints(test_additional_classes)
+		
+		deb.prints(np.unique(self.patches['test']['label'], return_counts=True))
+
 		labels2new_labels = dict((c, i) for i, c in enumerate(classes))
 		new_labels2labels = dict((i, c) for i, c in enumerate(classes))
 		for j in range(len(classes)):
@@ -3159,8 +3174,9 @@ if __name__ == '__main__':
 			elif args.seq_mode=='var' or args.seq_mode=='var_label':	
 				label_type = 'NtoN'
 			deb.prints(label_type)
-			data.semantic_balance(500,label_type = label_type) #More for seq2seq
-				
+#			data.semantic_balance(500,label_type = label_type) #More for seq2seq
+			data.semantic_balance(700,label_type = label_type) #More for seq2seq
+						
 
 
 		model.loss_weights_estimate(data)
@@ -3209,7 +3225,7 @@ if __name__ == '__main__':
 		print("================== PATCHES WERE STORED =====================")
 
 	elif store_patches==True and store_patches_each_sample==False:
-		patchesStorage = PatchesStorageAllSamples(data.path['v'])
+		patchesStorage = PatchesStorageAllSamples(data.path['v'], args.seq_mode, args.seq_date)
 	
 		print("===== STORING THE LOADED PATCHES AS ALL SAMPLES IN A SINGLE FILE ======")
 		
