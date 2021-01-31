@@ -88,7 +88,7 @@ def labels_predictions_filter_transform(label_test,predictions,class_n,
 		elif dataset=='l2':
 			important_classes_idx=[0,1,2,6,8,10,12]
 			#important_classes_idx=[0,1,2,6,12]
-			
+			important_classes_idx=[0,1,6,10,12]
 
 		mode=3
 		if mode==1:
@@ -668,6 +668,9 @@ elif dataset=='l2':
 		]]	
 		experiment_groups=[[
 			'model_best_UUnet4ConvLSTM_doty_var_label_valalldates_rep10.h5'
+		]]	
+		experiment_groups=[[
+			'model_best_UUnet4ConvLSTM_doty_fixed_label_var_label__700perclass.h5'
 		]]	
 
 		

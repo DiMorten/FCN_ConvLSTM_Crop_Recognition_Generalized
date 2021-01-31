@@ -113,8 +113,8 @@ deb.prints(args.patch_step_test)
 
 #args.seq_mode = 'var_label'
 
-#args.seq_mode = 'var_label'
-args.seq_mode = 'fixed'
+args.seq_mode = 'var_label'
+#args.seq_mode = 'fixed'
 
 
 if args.seq_mode == 'var_label':
@@ -2852,7 +2852,7 @@ class NetModel(NetObject):
 							input_,
 							np.expand_dims(batch['val']['label'].argmax(axis=-1),axis=-1).astype(np.int8))		# Accumulated epoch
 					if args.seq_mode == 'fixed' or args.seq_mode == 'fixed_label_len':
-						input_ = self.mim.batchTrainPreprocess(batch['val'], data,  
+						input_ = self.mim.batchTrainPreprocess(batch['val'], data.ds,  
 									label_date_id = -1) # tstep is -12 to -1
 
 						data.patches['val']['prediction'][idx0:idx1]=(self.graph.predict(
@@ -2863,10 +2863,12 @@ class NetModel(NetObject):
 						for t_step in range(data.labeled_dates): # 0 to 11
 							batch_val_label = batch['val']['label'][:, t_step]
 							#data.patches['test']['label'] = data.patches['test']['label'][:, label_id]
-							##deb.prints(batch_val_label.shape)
+							#deb.prints(batch_val_label.shape)
 							##deb.prints(t_step-data.labeled_dates)
-							input_ = self.mim.batchTrainPreprocess(batch['val'], data,  
-										label_date_id = t_step-data.labeled_dates) # tstep is -12 to -1
+							#batch_seq_len = 12
+							input_ = self.mim.batchTrainPreprocess(batch['val'], data.ds,  
+										label_date_id = t_step-data.labeled_dates,
+										batch_seq_len = 12) # tstep is -12 to -1
 
 							#deb.prints(data.patches['test']['label'].shape)
 
@@ -2926,7 +2928,7 @@ class NetModel(NetObject):
 
 
 					if args.seq_mode == 'fixed' or args.seq_mode=='fixed_label_len':
-						input_ = self.mim.batchTrainPreprocess(batch['test'], data,  
+						input_ = self.mim.batchTrainPreprocess(batch['test'], data.ds,  
 									label_date_id = -1)
 						data.patches['test']['prediction'][idx0:idx1]=(self.graph.predict(
 							input_,
@@ -2936,9 +2938,9 @@ class NetModel(NetObject):
 						for t_step in range(data.labeled_dates):
 							batch_val_label = batch['test']['label'][:, t_step]
 							#data.patches['test']['label'] = data.patches['test']['label'][:, label_id]
-							deb.prints(batch_val_label.shape)
+							#deb.prints(batch_val_label.shape)
 							
-							input_ = self.mim.batchTrainPreprocess(batch['test'], data,  
+							input_ = self.mim.batchTrainPreprocess(batch['test'], data.ds,  
 										label_date_id = t_step-data.labeled_dates)
 
 							#deb.prints(data.patches['test']['label'].shape)
@@ -3152,14 +3154,15 @@ if __name__ == '__main__':
 			
 		print("=== AUGMENTING TRAINING DATA")
 
-		balancing=True
+		balancing=False
 		if balancing==True:
 			if args.seq_mode=='fixed' or args.seq_mode=='fixed_label_len':
 				label_type = 'Nto1'
 			elif args.seq_mode=='var' or args.seq_mode=='var_label':	
 				label_type = 'NtoN'
 			deb.prints(label_type)
-			data.semantic_balance(500,label_type = label_type) #More for seq2seq
+#			data.semantic_balance(500,label_type = label_type) #More for seq2seq
+			data.semantic_balance(700,label_type = label_type) #More for seq2seq
 				
 
 

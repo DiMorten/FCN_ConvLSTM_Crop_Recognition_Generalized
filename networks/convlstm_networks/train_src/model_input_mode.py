@@ -56,6 +56,7 @@ class MIMVariable(ModelInputMode):
         min_seq_len = t_len - data.labeled_dates + 1 # 20 - 12 + 1 = 9
         deb.prints(min_seq_len)
         data.ds.setDotyFlag(True)
+        data.ds.dotyReplicateSamples()
         return batch, data, min_seq_len
     def valLabelSelect(self, data, label_id = -1):
         
@@ -98,8 +99,11 @@ class MIMVarLabel_PaddedSeq(MIMVarLabel):
     def batchTrainPreprocess(self, batch, ds, label_date_id, batch_seq_len=None):
         sample_n = batch['in'].shape[0]
         #print("Label, seq start, seq end",label_date_id,label_date_id-batch_seq_len+1,label_date_id+1)
+        #deb.prints(ds.padded_dates)
         if label_date_id+1!=0:
+            #print("A")
             if label_date_id in ds.padded_dates:
+                #print("B")
                 unpadded_input = batch['in'][:, :label_date_id+1]
                 len_input_seq = unpadded_input.shape[1]
                 #deb.prints(len_input_seq)
@@ -108,14 +112,15 @@ class MIMVarLabel_PaddedSeq(MIMVarLabel):
             else:
                 #print(batch['in'].shape,label_date_id-self.batch_seq_len+1,label_date_id+1)
                 input_ = batch['in'][:, label_date_id-self.batch_seq_len+1:label_date_id+1]
-                ##print(input_.shape)
+                #print(input_.shape)
 
         else:
             #print(batch['in'].shape,label_date_id-self.batch_seq_len+1,label_date_id+1)
             input_ = batch['in'][:, label_date_id-self.batch_seq_len+1:]
-            ##print(input_.shape)
+            #print(input_.shape)
 
             #print("exception", input_.shape)
+        #deb.prints(input_.shape)
         input_ = input_.astype(np.float16)
         input_ = ds.addDotyPadded(input_, 
                     bounds = [label_date_id-self.batch_seq_len+1, label_date_id+1], 

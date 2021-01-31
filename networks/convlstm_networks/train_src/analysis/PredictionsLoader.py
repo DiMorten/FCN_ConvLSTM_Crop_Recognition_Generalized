@@ -140,9 +140,16 @@ class PredictionsLoaderModelNto1FixedSeqFixedLabel(PredictionsLoaderModelNto1):
 #		test_label=np.load(self.path_test+'patches_label.npy')
 		self.labeled_dates = 12
 		batch['label']=np.load(self.path_test+'patches_label.npy') # may18
+		deb.prints(np.unique(batch['label'].argmax(axis=-1),return_counts=True))
 		deb.prints(batch['in'].shape)
 		deb.prints(batch['label'].shape)
-		#pdb.set_trace()
+
+		label_test = batch['label'].argmax(axis=-1).flatten()
+		label_test = label_test[label_test!=11]
+		
+		deb.prints(np.unique(label_test,return_counts=True))
+		deb.prints(label_test.shape)
+		pdb.set_trace()
 		
 #		self.mim = MIMVarLabel_PaddedSeq()
 		self.mim = MIMFixed()
@@ -252,6 +259,8 @@ class PredictionsLoaderModelNto1FixedSeqVarLabel(PredictionsLoaderModelNto1):
 		deb.prints(batch['label'].shape)
 		#pdb.set_trace()
 		batch['label']=batch['label'][:,-self.labeled_dates:] # may18
+
+		deb.prints(np.unique(batch['label'].argmax(axis=-1)[:,3],return_counts=True))
 		deb.prints(batch['in'].shape)
 		deb.prints(batch['label'].shape)
 		#pdb.set_trace()
@@ -268,9 +277,9 @@ class PredictionsLoaderModelNto1FixedSeqVarLabel(PredictionsLoaderModelNto1):
 		# add doty
 
 		if self.dataset=='lm':
-			ds=LEM()
+			ds=LEM(seq_mode='var_label', seq_date='jan')
 		elif self.dataset=='l2':
-			ds=LEM2()
+			ds=LEM2(seq_mode='var_label', seq_date='jan')
 		dataSource = SARSource()
 		ds.addDataSource(dataSource)
 	

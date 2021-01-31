@@ -13,7 +13,8 @@ def load_image(patch):
 #lem2_mask = cv2.imread('TrainTestMask_large_coffee.tif', 0).astype(np.uint8)
 #lem2_mask = cv2.imread('TrainTestMask.tif', 0).astype(np.uint8)
 #lem2_mask = cv2.imread('TrainTestMask2.tif', 0).astype(np.uint8)
-lem2_mask = cv2.imread('TrainTestMask_coffee.tif', 0).astype(np.uint8)
+#lem2_mask = cv2.imread('TrainTestMask_coffee.tif', 0).astype(np.uint8)
+lem2_mask = cv2.imread('TrainTestMask.tif', 0).astype(np.uint8)
 
 print(lem2_mask.shape)
 lem2_label_name = 'labels/20200912_S1.tif'
@@ -32,9 +33,9 @@ for date in dates:
     lem2_label_train[lem2_mask!=1] = 0
     lem2_label_test[lem2_mask!=2] = 0
     print("======================== ",date)
-    print("np.unique(lem2_label, return_counts=True)",np.unique(lem2_label, return_counts=True))
-    print("np.unique(lem2_label_train, return_counts=True)",np.unique(lem2_label_train, return_counts=True))
-    print("np.unique(lem2_label_test, return_counts=True)",np.unique(lem2_label_test, return_counts=True))
+    print("np.unique(lem2_label, return_counts=True)",np.unique(lem2_label, return_counts=True), lem2_label.shape)
+    print("np.unique(lem2_label_train, return_counts=True)",np.unique(lem2_label_train, return_counts=True), lem2_label_train.shape)
+    print("np.unique(lem2_label_test, return_counts=True)",np.unique(lem2_label_test, return_counts=True), lem2_label_test.shape)
 
 lem1_mask = cv2.imread('../lm_data/TrainTestMask.tif', 0).astype(np.uint8)
 lem1_label = load_image('../lm_data/labels/20170916_S1.tif').astype(np.uint8)

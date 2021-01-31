@@ -10,66 +10,20 @@
 
 ::dataset=cv
 set dataset=lm
-:: set dataset=lm
+:: set dataset=l2
 
 ::::dataSource='OpticalWithClouds'
 ::dataSource='SAR'
 set dataSource=SAR
 set model=UUnet4ConvLSTM_doty
-set seq_mode=fixed
+set seq_mode=var_label
 
 
 set seq_date=aug
 
-set id=fixed_label_%seq_mode%_%seq_date%
-call patches_extract.bat %dataset% %dataSource% %seq_mode% %seq_date%
-call experiment_automation.bat %id% %model% %dataset% %dataSource% %seq_mode% %seq_date%
+:: set id=fixed_label_%seq_mode%_%seq_date%
+set id=fixed_label_%seq_mode%__700perclass_reprep
 
-set seq_date=sep
-
-set id=fixed_label_%seq_mode%_%seq_date%
-call patches_extract.bat %dataset% %dataSource% %seq_mode% %seq_date%
-call experiment_automation.bat %id% %model% %dataset% %dataSource% %seq_mode% %seq_date%
-
-set seq_date=oct
-
-set id=fixed_label_%seq_mode%_%seq_date%
-call patches_extract.bat %dataset% %dataSource% %seq_mode% %seq_date%
-call experiment_automation.bat %id% %model% %dataset% %dataSource% %seq_mode% %seq_date%
-
-set seq_date=nov
-
-set id=fixed_label_%seq_mode%_%seq_date%
-call patches_extract.bat %dataset% %dataSource% %seq_mode% %seq_date%
-call experiment_automation.bat %id% %model% %dataset% %dataSource% %seq_mode% %seq_date%
-
-set seq_date=dec
-
-set id=fixed_label_%seq_mode%_%seq_date%
-call patches_extract.bat %dataset% %dataSource% %seq_mode% %seq_date%
-call experiment_automation.bat %id% %model% %dataset% %dataSource% %seq_mode% %seq_date%
-
-set seq_date=jan
-
-set id=fixed_label_%seq_mode%_%seq_date%
-call patches_extract.bat %dataset% %dataSource% %seq_mode% %seq_date%
-call experiment_automation.bat %id% %model% %dataset% %dataSource% %seq_mode% %seq_date%
-
-set seq_date=feb
-
-set id=fixed_label_%seq_mode%_%seq_date%
-call patches_extract.bat %dataset% %dataSource% %seq_mode% %seq_date%
-call experiment_automation.bat %id% %model% %dataset% %dataSource% %seq_mode% %seq_date%
-
-set seq_date=mar
-
-set id=fixed_label_%seq_mode%_%seq_date%
-call patches_extract.bat %dataset% %dataSource% %seq_mode% %seq_date%
-call experiment_automation.bat %id% %model% %dataset% %dataSource% %seq_mode% %seq_date%
-
-set seq_date=may
-
-set id=fixed_label_%seq_mode%_%seq_date%
 call patches_extract.bat %dataset% %dataSource% %seq_mode% %seq_date%
 call experiment_automation.bat %id% %model% %dataset% %dataSource% %seq_mode% %seq_date%
 

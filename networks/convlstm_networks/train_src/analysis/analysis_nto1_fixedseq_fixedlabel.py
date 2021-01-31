@@ -596,7 +596,7 @@ path_img="../../../../dataset/dataset/"+dataset+"_data/patches_bckndfixed/test/p
 imgs_in = np.load(path_img,mmap_mode='r')
 
 load_metrics=False
-small_classes_ignore=True
+small_classes_ignore=False
 #mode='global'
 mode='each_date'
 if dataset=='cv':
