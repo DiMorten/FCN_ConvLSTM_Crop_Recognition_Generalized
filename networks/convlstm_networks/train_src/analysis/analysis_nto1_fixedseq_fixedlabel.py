@@ -17,7 +17,7 @@ import cv2
 import pdb
 file_id="importantclasses"
 
-from PredictionsLoader import PredictionsLoaderNPY, PredictionsLoaderModel, PredictionsLoaderModelNto1, PredictionsLoaderModelNto1FixedSeqFixedLabel
+from PredictionsLoader import PredictionsLoaderNPY, PredictionsLoaderModel, PredictionsLoaderModelNto1, PredictionsLoaderModelNto1FixedSeqFixedLabel, PredictionsLoaderModelNto1FixedSeqFixedLabelAdditionalTestClsses
 from colorama import init
 init()
 save_bar_flag=True
@@ -259,7 +259,8 @@ def experiment_analyze(small_classes_ignore,dataset='cv',
 
 		#predictionsLoader = PredictionsLoaderModel(path_test)
 		#predictionsLoader = PredictionsLoaderModelNto1(path_test)
-		predictionsLoader = PredictionsLoaderModelNto1FixedSeqFixedLabel(path_test, dataset=dataset)
+#		predictionsLoader = PredictionsLoaderModelNto1FixedSeqFixedLabel(path_test, dataset=dataset)
+		predictionsLoader = PredictionsLoaderModelNto1FixedSeqFixedLabelAdditionalTestClsses(path_test, dataset=dataset)
 
 
 		predictions, label_test = predictionsLoader.loadPredictions(model_path, seq_date=args.seq_date, model_dataset=args.model_dataset)
@@ -714,11 +715,11 @@ elif dataset=='l2':
 			'model_best_UUnet4ConvLSTM_doty_fixed_label_fixed_mar_l2_mar.h5'
 		]]	
 		experiment_groups=[[
-			'model_best_UUnet4ConvLSTM_doty_fixed_label_fixed_'+args.seq_date+'_l2.h5'
+			'model_best_UUnet4ConvLSTM_doty_fixed_label_fixed_'+args.seq_date+'_l2_rep2.h5'
 		]]	
-		experiment_groups=[[
-			'model_best_UUnet4ConvLSTM_doty_fixed_label_fixed_'+args.seq_date+'_700perclass.h5'
-		]]	
+#		experiment_groups=[[
+#			'model_best_UUnet4ConvLSTM_doty_fixed_label_fixed_'+args.seq_date+'_700perclass.h5'
+#		]]	
 elif dataset=='lm':
 
 	experiment_groups=[[

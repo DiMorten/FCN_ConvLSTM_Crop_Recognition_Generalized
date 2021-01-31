@@ -145,11 +145,18 @@ class PredictionsLoaderModelNto1FixedSeqFixedLabel(PredictionsLoaderModelNto1):
 		else:
 			batch['in']=np.load(self.path_test+'patches_in_fixed_'+seq_date+'.npy',mmap_mode='r') # len is 21
 	#		test_label=np.load(self.path_test+'patches_label.npy')
+			deb.prints(self.path_test+'patches_label_fixed_'+seq_date+'.npy')
 			batch['label']=np.load(self.path_test+'patches_label_fixed_'+seq_date+'.npy') # may18			
 		self.labeled_dates = 12
 
+
 		deb.prints(batch['in'].shape)
 		deb.prints(batch['label'].shape)
+
+		one_hot_label=True
+		if one_hot_label==True:
+			batch['label'] = batch['label'].argmax(axis=-1)
+
 		#pdb.set_trace()
 		
 #		self.mim = MIMVarLabel_PaddedSeq()
@@ -211,12 +218,12 @@ class PredictionsLoaderModelNto1FixedSeqFixedLabel(PredictionsLoaderModelNto1):
 		print("batch['in'][0].shape, batch['label'].shape, test_predictions.shape",batch['in'][0].shape, batch['label'].shape, test_predictions.shape)
 		print("Test predictions dtype",test_predictions.dtype)
 		deb.prints(np.unique(test_predictions.argmax(axis=-1), return_counts=True))
-		deb.prints(np.unique(batch['label'].argmax(axis=-1), return_counts=True))
+		deb.prints(np.unique(batch['label'], return_counts=True))
 
 		print(" shapes", test_predictions.shape, batch['label'].shape)
 
 		test_predictions = test_predictions.argmax(axis=-1)
-		batch['label'] = batch['label'].argmax(axis=-1)
+		#batch['label'] = batch['label'].argmax(axis=-1)
 		print(" shapes", test_predictions.shape, batch['label'].shape)
 		print( "uniques",np.unique(test_predictions, return_counts=True),np.unique(batch['label'], return_counts=True))
 		
@@ -241,6 +248,160 @@ class PredictionsLoaderModelNto1FixedSeqFixedLabel(PredictionsLoaderModelNto1):
 		del batch['in']
 		return test_predictions, batch['label']
 
+
+
+class PredictionsLoaderModelNto1FixedSeqFixedLabelAdditionalTestClsses(PredictionsLoaderModelNto1FixedSeqFixedLabel):
+	def newLabel2labelTranslate(self, label, filename, bcknd_flag=True):
+		print("Entering newLabel2labelTranslate")
+		label = label.astype(np.uint8)
+		# bcknd to 0
+		deb.prints(np.unique(label,return_counts=True))
+		deb.prints(np.unique(label)[-1])
+		if bcknd_flag == True:
+			label[label==np.unique(label)[-2]] = 255 # this -1 will be different for each dataset
+		deb.prints(np.unique(label,return_counts=True))
+		label = label + 1
+		
+		deb.prints(np.unique(label,return_counts=True))
+
+		# translate 
+		f = open(filename, "rb")
+		new_labels2labels = pickle.load(f)
+		deb.prints(new_labels2labels)
+
+		classes = np.unique(label)
+		deb.prints(classes)
+		translated_label = label.copy()
+		for j in range(len(classes)):
+			print(classes[j])
+			
+			if classes[j]<20:
+				print("Translated",new_labels2labels[classes[j]])
+				translated_label[label == classes[j]] = new_labels2labels[classes[j]]
+			else:
+				print("class is outside dict") 
+
+		# bcknd to last
+		##label = label - 1 # bcknd is 255
+		##label[label==255] = np.unique(label)[-2]
+		return translated_label 
+	def loadPredictions(self,path_model,seq_date=None, model_dataset=None):
+		print("============== loading model =============")
+		model=load_model(path_model, compile=False)
+		print("Model", model)
+		print("Loading in data: ",self.path_test+'patches_in.npy')
+		batch = {}
+		dated_patches_name =True
+		if dated_patches_name==False:
+
+			batch['in']=np.load(self.path_test+'patches_in.npy',mmap_mode='r') # len is 21
+	#		test_label=np.load(self.path_test+'patches_label.npy')
+			batch['label']=np.load(self.path_test+'patches_label.npy') # may18
+		else:
+			batch['in']=np.load(self.path_test+'patches_in_fixed_'+seq_date+'.npy',mmap_mode='r') # len is 21
+	#		test_label=np.load(self.path_test+'patches_label.npy')
+			deb.prints(self.path_test+'patches_label_fixed_'+seq_date+'.npy')
+			batch['label']=np.load(self.path_test+'patches_label_fixed_'+seq_date+'.npy') # may18			
+		self.labeled_dates = 12
+
+
+		deb.prints(batch['in'].shape)
+		deb.prints(batch['label'].shape)
+
+		one_hot_label=False
+		if one_hot_label==True:
+			batch['label'] = batch['label'].argmax(axis=-1)
+
+		#pdb.set_trace()
+		
+#		self.mim = MIMVarLabel_PaddedSeq()
+		self.mim = MIMFixed()
+
+		data = {'labeled_dates': 12}
+		data['labeled_dates'] = 12
+
+		
+		#batch = {'in': test_in, 'label': test_label}
+
+		# add doty
+
+		if self.dataset=='lm':
+			ds=LEM('fixed', seq_date)
+		elif self.dataset=='l2':
+			ds=LEM2('fixed', seq_date)
+		dataSource = SARSource()
+		ds.addDataSource(dataSource)
+	
+		time_delta = ds.getTimeDelta(delta=True,format='days')
+		ds.setDotyFlag(True)
+		dotys, dotys_sin_cos = ds.getDayOfTheYear()
+		ds.dotyReplicateSamples(sample_n = batch['label'].shape[0])
+
+		prediction_dtype = np.float16
+		
+		model_t_len = 12
+		batch['shape'] = (batch['in'].shape[0], model_t_len) + batch['in'].shape[2:]
+
+		# model dataset is to get the correct last date from the model dataset
+
+		if model_dataset=='lm':
+			train_ds=LEM('fixed',seq_date)
+		elif model_dataset=='l2':
+			train_ds=LEM2('fixed', seq_date)
+		train_ds.addDataSource(SARSource())
+		# get model class n
+		model_shape = model.layers[-1].output_shape
+		model_class_n = model_shape[-1]
+		deb.prints(model_shape)
+		deb.prints(model_class_n)
+#		test_predictions = np.zeros_like(batch['label'][...,:-1	], dtype = prediction_dtype)
+		test_predictions = np.zeros((batch['label'].shape[0],)+model_shape[1:], 
+			dtype = prediction_dtype)
+		deb.prints(test_predictions.shape)
+
+		#pdb.set_trace()
+
+		input_ = self.mim.batchTrainPreprocess(batch, ds,  
+					label_date_id = -1) # tstep is -12 to -1
+		deb.prints(input_[1].shape)
+
+		#pdb.set_trace()
+		test_predictions=(model.predict(input_)).astype(prediction_dtype) 
+		#pdb.set_trace()
+		print(" shapes", test_predictions.shape, batch['label'].shape)
+		
+		print("batch['in'][0].shape, batch['label'].shape, test_predictions.shape",batch['in'][0].shape, batch['label'].shape, test_predictions.shape)
+		print("Test predictions dtype",test_predictions.dtype)
+		deb.prints(np.unique(test_predictions.argmax(axis=-1), return_counts=True))
+		deb.prints(np.unique(batch['label'], return_counts=True))
+
+		print(" shapes", test_predictions.shape, batch['label'].shape)
+
+		test_predictions = test_predictions.argmax(axis=-1)
+		#batch['label'] = batch['label'].argmax(axis=-1)
+		print(" shapes", test_predictions.shape, batch['label'].shape)
+		print( "uniques",np.unique(test_predictions, return_counts=True),np.unique(batch['label'], return_counts=True))
+		
+		translate_mode=True
+		deb.prints(translate_mode)
+
+		if translate_mode==True:
+			translate_label_path = '../'
+			test_predictions = self.newLabel2labelTranslate(test_predictions, 
+					#translate_label_path + 'new_labels2labels_lm_20171209_S1.pkl',
+					translate_label_path + 'new_labels2labels_'+model_dataset+'_'+train_ds.im_list[-1]+'.pkl',
+					
+					bcknd_flag=False)
+						
+			batch['label'] = self.newLabel2labelTranslate(batch['label'], 
+					translate_label_path + 'new_labels2labels_l2_'+ds.im_list[-1]+'.pkl',
+					bcknd_flag=True)
+		print("End shapes", test_predictions.shape, batch['label'].shape)
+		print(" shapes", test_predictions.shape, batch['label'].shape)
+		print( "uniques",np.unique(test_predictions, return_counts=True),np.unique(batch['label'], return_counts=True))
+		#pdb.set_trace()
+		del batch['in']
+		return test_predictions, batch['label']
 class PredictionsLoaderModelNto1FixedSeqVarLabel(PredictionsLoaderModelNto1):
 	def newLabel2labelTranslate(self, label, filename):
 		label = label.astype(np.uint8)

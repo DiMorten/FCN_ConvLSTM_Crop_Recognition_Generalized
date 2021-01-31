@@ -31,6 +31,24 @@ class MIMFixed(ModelInputMode):
 
     def valLabelSelect(self, data, label_id = -1):
         return data
+class MIMFixed_PaddedSeq(MIMFixed):
+    def batchTrainPreprocess(self, batch, ds, label_date_id, batch_seq_len=12):
+        len_input_seq = batch['in'].shape[1]
+        #print("batch shape, len input seq", batch['shape'], len_input_seq)
+        if len_input_seq<12:
+            input_ = np.zeros(batch['shape']).astype(np.float16)
+            input_[:, -len_input_seq:] = batch['in']
+            input_ = ds.addDotyPadded(input_, 
+                        bounds = None, 
+                        seq_len = batch_seq_len,
+                        sample_n =  batch['in'].shape[0])
+            return input_
+        else:
+            input_ = batch['in'].astype(np.float16)
+            input_ = ds.addDoty(input_)
+            return input_
+
+
 class MIMFixedLabelSeq(MIMFixed):
     def __init__(self):
         pass

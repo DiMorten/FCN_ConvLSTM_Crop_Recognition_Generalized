@@ -337,6 +337,8 @@ class Dataset(object):
 				dotys_sin_cos = self.dotys_sin_cos[:,bounds[0]:bounds[1] if bounds[1]!=0 else None]
 #				deb.prints(self.dotys_sin_cos.shape)
 #				deb.prints(dotys_sin_cos.shape)
+			else:
+				dotys_sin_cos = self.dotys_sin_cos.copy()
 			dotys_sin_cos_padded = np.zeros((sample_n, seq_len, 2))
 			dotys_sin_cos_padded[:, -dotys_sin_cos.shape[1]:] = dotys_sin_cos
 			input_ = [input_, dotys_sin_cos_padded]
