@@ -11,6 +11,7 @@
 ::dataset=cv
 :: set dataset=l2
 set dataset=l2
+set model_dataset=l2
 
 ::::dataSource='OpticalWithClouds'
 ::dataSource='SAR'
@@ -19,56 +20,17 @@ set model=UUnet4ConvLSTM_doty
 :: set seq_mode=fixed
 set seq_mode=fixed
 
+:: cd ../analysis/
+
+:: cd ../../../train_src/scripts
+:: call patches_extract.bat %dataset% %dataSource% %seq_mode% %seq_date%
 cd ../analysis/
-set seq_date=oct
+:: python analysis_nto1_fixedseq_fixedlabel.py --dataset=%dataset% --seq_date=%seq_date%
 
-set id=fixed_label_%seq_mode%_%seq_date%_l2
-:: cd ../../../train_src/scripts
-:: call patches_extract.bat %dataset% %dataSource% %seq_mode% %seq_date%
-
-python analysis_nto1_fixedseq_fixedlabel.py --dataset=%dataset% --seq_date=%seq_date%
-
-set seq_date=nov
-
-set id=fixed_label_%seq_mode%_%seq_date%_l2
-:: cd ../../../train_src/scripts
-:: call patches_extract.bat %dataset% %dataSource% %seq_mode% %seq_date%
-:: cd ../analysis/
-python analysis_nto1_fixedseq_fixedlabel.py --seq_date=%seq_date%
-
-set seq_date=feb
-
-set id=fixed_label_%seq_mode%_%seq_date%_l2
-:: cd ../../../train_src/scripts
-:: call patches_extract.bat %dataset% %dataSource% %seq_mode% %seq_date%
-:: cd ../analysis/
-python analysis_nto1_fixedseq_fixedlabel.py --seq_date=%seq_date%
 
 set seq_date=apr
-
-set id=fixed_label_%seq_mode%_%seq_date%_l2
-:: cd ../../../train_src/scripts
-:: call patches_extract.bat %dataset% %dataSource% %seq_mode% %seq_date%
-:: cd ../analysis/
-python analysis_nto1_fixedseq_fixedlabel.py --seq_date=%seq_date%
-
-set seq_date=jul
-
-set id=fixed_label_%seq_mode%_%seq_date%_l2
-:: cd ../../../train_src/scripts
-:: call patches_extract.bat %dataset% %dataSource% %seq_mode% %seq_date%
-:: cd ../analysis/
-python analysis_nto1_fixedseq_fixedlabel.py --seq_date=%seq_date%
-
-set seq_date=sep
-
-set id=fixed_label_%seq_mode%_%seq_date%_l2
-:: cd ../../../train_src/scripts
-:: call patches_extract.bat %dataset% %dataSource% %seq_mode% %seq_date%
-:: cd ../analysis/
-python analysis_nto1_fixedseq_fixedlabel.py --seq_date=%seq_date%
-
-
+set id=fixed_label_%seq_mode%_%seq_date%_l2_secondtry
+python analysis_nto1_fixedseq_fixedlabel.py --dataset=%dataset% --model_dataset=%model_dataset% --seq_date=%seq_date%
 
 
 :: ===== USE MODEL

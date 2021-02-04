@@ -33,7 +33,7 @@ parser.add_argument('--dataset', dest='dataset',
                     default='l2',
                     help='dataset')
 parser.add_argument('--model_dataset', dest='model_dataset', 
-                    default='lm',
+                    default='l2',
                     help='model_dataset')
 
 args = parser.parse_args()
@@ -259,9 +259,13 @@ def experiment_analyze(small_classes_ignore,dataset='cv',
 
 		#predictionsLoader = PredictionsLoaderModel(path_test)
 		#predictionsLoader = PredictionsLoaderModelNto1(path_test)
-#		predictionsLoader = PredictionsLoaderModelNto1FixedSeqFixedLabel(path_test, dataset=dataset)
-		predictionsLoader = PredictionsLoaderModelNto1FixedSeqFixedLabelAdditionalTestClsses(path_test, dataset=dataset)
-
+		additionalTestClsses = ['dec', 'jan', 'mar', 'may', 'aug']
+		if args.seq_date in additionalTestClsses:
+			predictionsLoader = PredictionsLoaderModelNto1FixedSeqFixedLabelAdditionalTestClsses(path_test, dataset=dataset)
+		else:
+			predictionsLoader = PredictionsLoaderModelNto1FixedSeqFixedLabel(path_test, dataset=dataset)
+		deb.prints(args.seq_date in additionalTestClsses)
+		deb.prints(predictionsLoader)
 
 		predictions, label_test = predictionsLoader.loadPredictions(model_path, seq_date=args.seq_date, model_dataset=args.model_dataset)
 		deb.prints(np.unique(np.concatenate((predictions,label_test),axis=0)))
@@ -717,6 +721,24 @@ elif dataset=='l2':
 		experiment_groups=[[
 			'model_best_UUnet4ConvLSTM_doty_fixed_label_fixed_'+args.seq_date+'_l2_rep2.h5'
 		]]	
+		experiment_groups=[[
+			'model_best_UUnet4ConvLSTM_doty_fixed_label_fixed_'+args.seq_date+'_lm_firsttry.h5'
+		]]	
+		experiment_groups=[[
+			'model_best_UUnet4ConvLSTM_doty_fixed_label_fixed_'+args.seq_date+'_l2_secondtry.h5'
+		]]	
+#		experiment_groups=[[
+#			'model_best_UUnet4ConvLSTM_doty_fixed_label_fixed_'+args.seq_date+'_l2_rep2.h5'
+#		]]	
+
+#		experiment_groups=[[
+#			'model_best_UUnet4ConvLSTM_doty_fixed_label_fixed_'+args.seq_date+'_l2.h5'
+#		]]	
+
+#		experiment_groups=[[
+#			'model_best_UUnet4ConvLSTM_doty_fixed_label_fixed_'+args.seq_date+'_l2_secondtry.h5'
+#		]]	
+
 #		experiment_groups=[[
 #			'model_best_UUnet4ConvLSTM_doty_fixed_label_fixed_'+args.seq_date+'_700perclass.h5'
 #		]]	

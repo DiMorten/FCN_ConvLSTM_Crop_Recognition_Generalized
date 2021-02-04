@@ -486,7 +486,7 @@ class LEM(Dataset):
 
 				elif self.seq_date=='jul':					
 					self.im_list=im_list_full[-11-12+1:-11+1]
-					assert len(self.im_list)==12
+					# assert len(self.im_list)==12
 					assert self.im_list[-1]=='20170706_S1'
 
 				elif self.seq_date=='aug':					

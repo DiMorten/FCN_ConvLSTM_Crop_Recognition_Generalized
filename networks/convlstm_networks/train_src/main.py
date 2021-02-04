@@ -100,8 +100,11 @@ parser.add_argument('-seq_date', '--seq_date', dest='seq_date',
 parser.add_argument('-ds', '--dataset', dest='dataset',
 					type=str, default='lm', help='Dataset name')
 
+parser.add_argument('-save_patches_only', '--save_patches_only', dest='save_patches_only',
+					type=bool, default=False, help='Dataset name')
 
-
+parser.add_argument('-id', '--id', dest='id',
+					type=str, default='default_id', help='id')
 
 
 args = parser.parse_args()
@@ -173,6 +176,7 @@ if direct_execution==True:
 	#args.model_type='Unet3D'
 	#args.model_type='BUnet6ConvLSTM'
 	#args.model_type='BUnet4ConvLSTM_SkipLSTM'
+
 
 def model_summary_print(s):
 	with open('model_summary.txt','w+') as f:
@@ -401,7 +405,11 @@ class Dataset(NetObject):
 		deb.prints(np.unique(self.patches['test']['label'],return_counts=True))    
 		self.class_n=class_n_no_bkcnd+1 # counting bccknd
 
-		save_test_patches = False
+		if args.seq_mode == 'fixed' and len(test_additional_classes)>0:
+			save_test_patches = True
+		else:
+			save_test_patches = False
+
 		deb.prints(save_test_patches)
 		if save_test_patches==True:
 			path="../../../dataset/dataset/l2_data/"
@@ -414,7 +422,8 @@ class Dataset(NetObject):
 			
 			patchesStorage.storeSplit(self.patches['test'], split='test_bckndfixed')
 			deb.prints(np.unique(self.patches['test']['label'],return_counts=True))
-			sys.exit("Test bckndfixed patches were saved")
+			if args.save_patches_only==True:
+				sys.exit("Test bckndfixed patches were saved")
 
 		# ======================================= end fix labels
 
@@ -3060,8 +3069,15 @@ class NetModel(NetObject):
 		print("EARLY STOP EPOCH",epoch,metrics)
 		training_time=round(time.time()-init_time,2)
 		print("Training time",training_time)
-		metadata = "Timestamp:"+ str(round(time.time(),2))+". Model: "+self.model_type+". Training time: "+str(training_time)+"\n"
-		print(metadata)
+		metadata = "Timestamp:"+ str(round(time.time(),2))+". Model: "+self.model_type+". Training time: "+str(training_time)
+		metadata = metadata + " args.id " + args.id 
+		metadata = metadata + " F1: " + str(metrics['f1_score']) 
+		metadata = metadata + " OA: " + str(metrics['overall_acc'])
+		metadata = metadata + " epoch: " + str(epoch)
+		metadata = metadata + "\n"
+		
+		deb.prints(metadata)
+
 		txt_append("metadata.txt",metadata)
 		np.save("prediction.npy",data.patches['test']['prediction'])
 		np.save("labels.npy",data.patches['test']['label'])
@@ -3252,6 +3268,8 @@ if __name__ == '__main__':
 		patchesStorage.store(data.patches)
 		print("================== PATCHES WERE STORED =====================")
 
+	if args.save_patches_only==True:
+		sys.exit("Stored patches and exited")
 
 	deb.prints(data.patches['train']['label'].shape)
 

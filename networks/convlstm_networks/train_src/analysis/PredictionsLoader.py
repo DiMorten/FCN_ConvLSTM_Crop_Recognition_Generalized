@@ -25,7 +25,7 @@ sys.path.append('../../../../dataset/dataset/patches_extract_script/')
 from dataSource import DataSource, SARSource, OpticalSource, Dataset, LEM, LEM2, CampoVerde, OpticalSourceWithClouds, Humidity
 
 sys.path.append('../')
-from model_input_mode import MIMFixed, MIMVarLabel, MIMVarSeqLabel, MIMVarLabel_PaddedSeq
+from model_input_mode import MIMFixed, MIMVarLabel, MIMVarSeqLabel, MIMVarLabel_PaddedSeq, MIMFixed_PaddedSeq
 import deb
 class PredictionsLoader():
 	def __init__(self):
@@ -160,7 +160,8 @@ class PredictionsLoaderModelNto1FixedSeqFixedLabel(PredictionsLoaderModelNto1):
 		#pdb.set_trace()
 		
 #		self.mim = MIMVarLabel_PaddedSeq()
-		self.mim = MIMFixed()
+#		self.mim = MIMFixed()
+		self.mim = MIMFixed_PaddedSeq()
 
 		data = {'labeled_dates': 12}
 		data['labeled_dates'] = 12
